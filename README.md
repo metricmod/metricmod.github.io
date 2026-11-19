@@ -3,7 +3,7 @@
 Medição de imagens científicas em uma janela só: área, comprimento, comprimento × largura, contagem,
 contagem de colônias, correção de perspectiva, várias fotos e exportação para Excel.
 
-**Abrir / instalar:** https://dragao6662011-crypto.github.io/metricmod/
+**Abrir / instalar:** https://metricmod.github.io/
 
 - Computador (Chrome ou Edge): abra o link e clique em **Instalar**.
 - Android: abra no Chrome e toque em **Instalar**.
