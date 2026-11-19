@@ -2,6 +2,7 @@
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
+  const APP_VERSION = '__VERSION__', AB = window.MM_ABOUT;
   const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('canvasWrap'), guide = $('guide');
   const COLORS = ['#ff3d7f', '#00b3e6', '#ffb000', '#8f6bff', '#00c48c', '#ff6b2c', '#e040fb', '#4fc3f7'];
   const PREFIX = { area: 'A', length: 'C', lw: 'CL', count: 'N', colony: 'P' };
@@ -12,7 +13,7 @@
     sel: null, tool: null, flow: {}, undo: [], redo: [],
     sens: 50, fill: true, excl: false, refine: true, minArea: 0, brushPx: 18, preview: null, previewCount: null,
     pointer: null, space: false, drag: null, grad: null,
-    style: { width: 2, dash: 'solid', legend: 'line', size: 13, tags: true },
+    style: { width: 2, dash: 'solid', legend: 'line', size: 13, tags: true, stamp: true },
   };
   try { Object.assign(S.style, JSON.parse(localStorage.getItem('metricmod.style') || '{}')); } catch { /* sem armazenamento */ }
   const saveStyle = () => { try { localStorage.setItem('metricmod.style', JSON.stringify(S.style)); } catch { /* ignora */ } };
@@ -999,7 +1000,9 @@
   function exportRows() {
     stash();
     const photos = S.photos.length ? S.photos : [];
-    const rows = [['MetricMod'], ['Fotos', String(photos.length)], ['Unidade dos resultados', unit()], []];
+    const now = new Date();
+    const rows = [['MetricMod', `versão ${APP_VERSION}`], ['Análise exportada em', `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR')}`], ['Endereço', AB.url],
+      ['Fotos', String(photos.length)], ['Unidade dos resultados', unit()], ['Aviso', AB.notice], []];
     const secs = new Map(); // kind -> {title, cols, rows:[]}
     const colonyList = [];
     photos.forEach((p) => {
@@ -1051,7 +1054,13 @@
     if (!S.img) return;
     const c = document.createElement('canvas'); c.width = S.W; c.height = S.H; const g = c.getContext('2d');
     g.drawImage(S.imgCanvas, 0, 0); for (const o of S.objs) if (o.kind === 'area' && o.mask.w) g.drawImage(maskCanvas(o), o.mask.x, o.mask.y);
-    drawOverlays(g, (x, y) => [x, y], Math.max(1, Math.max(S.W, S.H) / 1100));
+    const uu = Math.max(1, Math.max(S.W, S.H) / 1100);
+    drawOverlays(g, (x, y) => [x, y], uu);
+    if (S.style.stamp) { // carimbo: versão, escala e data, para a figura ser rastreável
+      const txt = `MetricMod ${APP_VERSION} · ${S.scale ? `1 ${S.scale.unit} = ${nf(S.scale.ppu, 2)} px` : 'sem escala'} · ${new Date().toLocaleDateString('pt-BR')}`;
+      g.font = `500 ${11 * uu}px Bahnschrift, "Segoe UI", sans-serif`; const w = g.measureText(txt).width + 12 * uu, h = 18 * uu;
+      g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(6 * uu, S.H - h - 6 * uu, w, h); g.fillStyle = '#fff'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(txt, 12 * uu, S.H - h / 2 - 6 * uu);
+    }
     c.toBlob((b) => { download(b, `${baseName()}-marcada.png`); toast('Imagem marcada salva na pasta de downloads.'); });
   };
 
@@ -1154,7 +1163,7 @@
     const st = S.style;
     $('lkWidth').value = st.width; $('lkWidthV').textContent = nf(st.width, st.width % 1 ? 1 : 0) + ' px';
     $('lkSize').value = st.size; $('lkSizeV').textContent = st.size + ' px';
-    $('lkLegend').value = st.legend; $('lkTags').checked = st.tags; $('lkTagsRow').hidden = st.legend === 'line';
+    $('lkLegend').value = st.legend; $('lkTags').checked = st.tags; $('lkStamp').checked = st.stamp !== false; $('lkTagsRow').hidden = st.legend === 'line';
     $('lkDash').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === st.dash));
     const o = selObj();
     $('lkColors').innerHTML = o ? COLORS.concat(['#ffffff', '#ffe600']).map((c) => `<button class="swb ${o.color === c ? 'on' : ''}" data-c="${c}" style="background:${c}" title="${c}"></button>`).join('') + `<input type="color" id="lkCustom" value="${o.color}" title="Outra cor">` : '<em>Selecione uma medição na imagem ou na tabela.</em>';
@@ -1169,6 +1178,7 @@
   $('lkSize').oninput = (e) => setStyle('size', +e.target.value);
   $('lkLegend').onchange = (e) => setStyle('legend', e.target.value);
   $('lkTags').onchange = (e) => setStyle('tags', e.target.checked);
+  $('lkStamp').onchange = (e) => setStyle('stamp', e.target.checked);
   $('lkDash').querySelectorAll('button').forEach((b) => b.onclick = () => setStyle('dash', b.dataset.v));
 
   /* ---------- projeto: salvar, abrir e salvamento automático ---------- */
@@ -1185,7 +1195,7 @@
   }
   function projectHeader() {
     stash();
-    return { app: 'MetricMod', version: 1, saved: new Date().toISOString(), cur: S.cur, group: S.group, groups: S.groups, dispUnit: S.dispUnit, lastScale: S.lastScale, style: S.style,
+    return { app: 'MetricMod', version: 1, appVersion: APP_VERSION, saved: new Date().toISOString(), cur: S.cur, group: S.group, groups: S.groups, dispUnit: S.dispUnit, lastScale: S.lastScale, style: S.style,
       photos: S.photos.map((p) => ({ uid: p.uid, name: p.name, corrected: !!(p.canvas || p.orig), scale: p.scale, view: p.view, seq: p.seq, objs: p.objs.map(serObj) })) };
   }
   async function buildProject() {
@@ -1210,7 +1220,11 @@
   async function openProject(file) {
     if (S.photos.some((p) => p.objs.length) && !confirm('Abrir o projeto substitui as fotos e medições abertas agora. Continuar?')) return;
     busy(true);
-    try { const { head, blobs } = await readProject(file); restoreProject(head, blobs); toast(`Projeto aberto: ${head.photos.length} foto(s).`); scheduleSave(true); }
+    try {
+      const { head, blobs } = await readProject(file); restoreProject(head, blobs);
+      toast(head.appVersion && head.appVersion !== APP_VERSION ? `Projeto aberto: ${head.photos.length} foto(s). Ele foi medido na versão ${head.appVersion}; você está usando a ${APP_VERSION}. Medições novas podem ter pequenas diferenças (veja Novidades).` : `Projeto aberto: ${head.photos.length} foto(s).`);
+      scheduleSave(true);
+    }
     catch (e) { toast(`Não consegui abrir o projeto: ${e.message}.`); }
     busy(false);
   }
@@ -1264,6 +1278,45 @@
     } catch (e) { /* sem IndexedDB */ }
   }
   checkAutoSave();
+  /* ---------- painel Métodos e citação ---------- */
+  const MESES = ['jan.', 'fev.', 'mar.', 'abr.', 'maio', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
+  function citations() {
+    const d = new Date(), ano = '__YEAR__', acesso = `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+    return {
+      abnt: `METRICMOD. <i>MetricMod</i>: medição de imagens científicas. Versão ${APP_VERSION}. [<i>S. l.</i>]: MetricMod, ${ano}. Programa de computador. Disponível em: ${AB.url}. Acesso em: ${acesso}.`,
+      apa: `MetricMod. (${ano}). <i>MetricMod: Medição de imagens científicas</i> (Versão ${APP_VERSION}) [Software]. ${AB.url}`,
+      metodo: `As medições foram feitas no MetricMod, versão ${APP_VERSION} (${AB.url}). A escala espacial foi definida por um objeto de medida conhecida presente em cada foto. [Descreva aqui as medidas usadas, por exemplo: a área foliar foi obtida pela detecção automática do contorno; o comprimento e a largura, pelos diâmetros de Feret máximo e mínimo.]`,
+    };
+  }
+  function renderAbout(tab) {
+    const b = $('aboutBody'); $('aboutVer').textContent = `versão ${APP_VERSION}`;
+    document.querySelectorAll('#aboutTabs button').forEach((x) => x.classList.toggle('on', x.dataset.t === tab));
+    const notice = `<div class="notice">${AB.notice}</div>`;
+    if (tab === 'metodos') b.innerHTML = notice + '<p>Como cada medida é calculada. Use estas descrições e referências na metodologia do seu trabalho.</p>' +
+      AB.methods.map((m) => `<h3>${m.t}</h3><p>${m.d}</p>${m.ij ? `<p class="ij">${m.ij}</p>` : ''}${m.r ? `<p class="ref">Referência: ${m.r}</p>` : ''}`).join('');
+    else if (tab === 'validacao') b.innerHTML = `<p>${AB.validationNote}</p><table><thead><tr><th>Teste</th><th>Valor de referência</th><th>MetricMod</th><th>Diferença</th></tr></thead><tbody>` +
+      AB.validation.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+    else if (tab === 'citar') {
+      const c = citations();
+      b.innerHTML = '<p>Cite a versão que você usou: ela aparece aqui, no topo do app, na planilha exportada e no projeto salvo.</p>' +
+        [['ABNT', 'abnt'], ['APA', 'apa'], ['Texto para a metodologia', 'metodo']].map(([t, k]) => `<h3>${t}</h3><div class="cite" id="cite-${k}">${c[k]}</div><div class="row"><button class="gbtn" data-copy="${k}">Copiar</button></div>`).join('') +
+        '<p class="ref">Na referência ABNT, a data de acesso é a de hoje. Ajuste se a análise foi feita em outro dia.</p>';
+      b.querySelectorAll('[data-copy]').forEach((x) => x.onclick = async () => {
+        const t = $('cite-' + x.dataset.copy).innerText;
+        try { await navigator.clipboard.writeText(t); } catch { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+        toast('Copiado.');
+      });
+    } else if (tab === 'novidades') b.innerHTML = '<p>O que mudou em cada versão.</p>' + AB.changelog.map(([v, t]) => `<h3>Versão ${v}${APP_VERSION.startsWith(v) ? ' (atual)' : ''}</h3><p>${t}</p>`).join('');
+    else b.innerHTML = notice + AB.credits.map((t) => `<p>${t}</p>`).join('');
+    b.scrollTop = 0;
+  }
+  const openAbout = (tab) => { $('about').hidden = false; renderAbout(tab || 'metodos'); };
+  $('btnAbout').onclick = () => openAbout('metodos');
+  $('verBadge').onclick = (e) => { e.stopPropagation(); openAbout('novidades'); };
+  $('aboutClose').onclick = () => { $('about').hidden = true; };
+  document.querySelectorAll('#aboutTabs button').forEach((x) => x.onclick = () => renderAbout(x.dataset.t));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('about').hidden) { $('about').hidden = true; e.stopImmediatePropagation(); } }, true);
+
   $('btnRes').onclick = () => document.body.classList.toggle('showRes');
   $('resClose').onclick = () => document.body.classList.remove('showRes');
 

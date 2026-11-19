@@ -6,8 +6,8 @@ cd "$(dirname "$0")" && mkdir -p dist site && VERSION=$(cat VERSION) python3 - <
 import os, shutil, re
 v=os.environ['VERSION']
 s=open('src/index.html').read()
-s=s.replace('/*CSS*/',open('src/style.css').read()).replace('/*CORE*/',open('src/core.js').read()).replace('/*APP*/',open('src/app.js').read())
-s=s.replace('__VERSION__',v)
+s=s.replace('/*CSS*/',open('src/style.css').read()).replace('/*CORE*/',open('src/core.js').read()).replace('/*ABOUT*/',open('src/about.js').read()).replace('/*APP*/',open('src/app.js').read())
+s=s.replace('__VERSION__',v).replace('__YEAR__',__import__('datetime').date.today().strftime('%Y'))
 open('dist/MetricMod.html','w').write(s.replace('<!--PWA-->',''))
 head='''<link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#000000">

@@ -1,4 +1,4 @@
-# MetricMod — versão 0.5.2
+# MetricMod — versão 0.6.0
 
 Abra **MetricMod.html** com dois cliques (Chrome ou Edge). Funciona sem internet e sem instalar nada.
 Versão instalável publicada em **https://metricmod.github.io/** (veja PUBLICAR.md).
@@ -45,6 +45,11 @@ Versão instalável publicada em **https://metricmod.github.io/** (veja PUBLICAR
 
 **No celular**: abra o mesmo arquivo no navegador do celular. As ferramentas ficam na barra de baixo, os resultados no botão
 "Resultados" no topo, e o "?" mostra a explicação de cada passo. Um dedo toca e arrasta; dois dedos dão zoom e movem a imagem.
+
+**Métodos e citação** (botão **i** no topo, ou clique no número da versão): como cada medida é calculada, com as
+referências científicas; resultados da validação; texto pronto para citar (ABNT e APA) e para a metodologia; novidades
+de cada versão. A versão também vai na planilha exportada, no projeto salvo e, opcionalmente, como carimbo na imagem salva.
+Uso em pesquisa e ensino; não destinado a diagnóstico clínico.
 
 Atalhos: roda do mouse = zoom · botão direito ou Espaço + arrastar = mover a imagem · Ctrl+Z / Ctrl+Y · Delete apaga a medição selecionada · Esc cancela · 0 ajusta à janela.
 

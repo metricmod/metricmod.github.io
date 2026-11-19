@@ -9,7 +9,7 @@
 </head>
 <body>
 <header id="top">
-  <div id="brand" title="MetricMod __VERSION__"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod</div>
+  <div id="brand" title="MetricMod __VERSION__"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v__VERSION__</button></div>
   <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
   <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
   <input type="file" id="folder" webkitdirectory multiple hidden>
@@ -34,6 +34,7 @@
         <option value="bl">Canto inferior esquerdo</option><option value="br">Canto inferior direito</option>
         <option value="none">Sem legenda</option></select></div>
       <label class="lrow chk" id="lkTagsRow"><input type="checkbox" id="lkTags"> Mostrar o nome (A1, C1…) junto da marcação</label>
+      <label class="lrow chk"><input type="checkbox" id="lkStamp"> Carimbo na imagem salva (versão, escala e data)</label>
       <div class="lrow"><span>Tamanho do texto</span><input type="range" id="lkSize" min="9" max="24"><output id="lkSizeV"></output></div>
       <div class="lrow"><span>Cor da marcação selecionada</span><div id="lkColors"></div></div>
       <p class="lnote">Vale para a tela e para a imagem salva.</p>
@@ -45,6 +46,7 @@
   <span id="zoomLbl">100%</span>
   <button class="tbtn icon" id="btnZoomIn" title="Aumentar zoom (+)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg></button>
   <button class="tbtn" id="btnFit" title="Ajustar à janela (0)">Ajustar</button>
+  <button class="tbtn icon" id="btnAbout" title="Métodos, validação e como citar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></button>
   <button class="tbtn" id="btnInstall" hidden title="Instalar o MetricMod neste aparelho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg><span class="lbl">Instalar</span></button>
   <button class="tbtn" id="btnRes" title="Ver resultados">Resultados <b id="resCount">0</b></button>
 </header>
@@ -60,6 +62,7 @@
       <p>Arraste uma ou várias fotos para cá, cole com Ctrl+V ou use os botões abaixo. As fotos precisam ter um objeto de medida conhecida, como uma régua, para definir a escala.</p>
       <button class="pbtn" id="btnOpen2">Abrir imagens</button> <button class="gbtn" id="btnFolder2">Abrir pasta</button>
       <p class="small">Também abre projetos salvos (.metricmod) e TIFF de microscópio.</p>
+      <p class="small">Uso em pesquisa e ensino. Veja como cada medida é calculada no botão <b>i</b> do topo.</p>
       <div id="resume" hidden><b>Continuar de onde parou?</b><span id="resumeTxt"></span><div><button class="pbtn" id="btnResume">Continuar</button> <button class="gbtn" id="btnDiscard">Começar do zero</button></div></div>
     </div></div>
     <div id="busy">Processando…</div>
@@ -81,8 +84,14 @@
     <button class="tbtn" id="btnPng">Salvar imagem marcada</button>
   </div>
 </aside>
+<aside id="about" hidden aria-label="Métodos e citação">
+  <div id="aboutHead"><h2>MetricMod <span id="aboutVer"></span></h2><button class="tbtn" id="aboutClose">Fechar</button></div>
+  <div class="seg" id="aboutTabs"><button data-t="metodos" class="on">Métodos</button><button data-t="validacao">Validação</button><button data-t="citar">Como citar</button><button data-t="novidades">Novidades</button><button data-t="creditos">Créditos</button></div>
+  <div id="aboutBody"></div>
+</aside>
 <div id="updBar" hidden>Há uma versão nova do MetricMod. <button class="pbtn" id="btnUpd">Atualizar agora</button></div>
 <script>/*CORE*/</script>
+<script>/*ABOUT*/</script>
 <script>/*APP*/</script>
 </body>
 </html>

@@ -175,6 +175,24 @@ td .del:hover { color: var(--danger); }
   #unitLbl span { display: none; }
 }
 
+#verBadge { margin-left: 8px; font: 500 11px var(--num); color: var(--soft); background: var(--raise); border: 1px solid var(--line-2); border-radius: 999px; padding: 2px 8px; vertical-align: 2px; }
+#verBadge:hover { color: var(--text); border-color: var(--accent); }
+#about { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100%); z-index: 35; background: #050707; border-left: 1px solid var(--line-2); box-shadow: -20px 0 50px rgba(0,0,0,.7); display: flex; flex-direction: column; }
+#about[hidden] { display: none; }
+#aboutHead { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 8px; }
+#aboutHead h2 { margin: 0; font: 600 20px var(--num); }
+#aboutHead h2 span { color: var(--soft); font-weight: 400; font-size: 15px; }
+#aboutTabs { flex: none; margin: 4px 18px 10px; align-self: flex-start; max-width: calc(100% - 36px); overflow-x: auto; }
+#aboutBody { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 18px 30px; line-height: 1.55; }
+#aboutBody h3 { font: 600 15px var(--num); margin: 18px 0 6px; color: var(--text); }
+#aboutBody p { margin: 0 0 8px; color: #c9d3d0; max-width: 70ch; }
+#aboutBody .ref { font-size: 12.5px; color: var(--soft); }
+#aboutBody .ij { font-size: 12.5px; color: var(--accent); }
+#aboutBody .notice { border: 1px solid rgba(245,183,0,.45); background: rgba(245,183,0,.08); color: #ffd25a; border-radius: 10px; padding: 10px 12px; margin: 6px 0 14px; font-size: 13px; }
+#aboutBody table { font-size: 12.5px; margin-top: 8px; }
+#aboutBody td, #aboutBody th { white-space: normal; text-align: left; font-family: var(--body); font-size: 12.5px; vertical-align: top; padding: 6px 6px; }
+#aboutBody .cite { background: var(--raise); border: 1px solid var(--line-2); border-radius: 10px; padding: 12px 14px; margin: 6px 0 4px; font-size: 13.5px; color: var(--text); }
+#aboutBody .row { display: flex; gap: 8px; margin-bottom: 14px; }
 #btnRes, #resClose, #guide .tips { display: none; }
 #btnInstall[hidden] { display: none; }
 #updBar { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 40; background: #0d1012; border: 1px solid var(--accent); border-radius: 12px; padding: 10px 12px 10px 16px; display: flex; gap: 12px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.7); }
@@ -235,7 +253,7 @@ td .del:hover { color: var(--danger); }
 </head>
 <body>
 <header id="top">
-  <div id="brand" title="MetricMod 0.5.2"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod</div>
+  <div id="brand" title="MetricMod 0.6.0"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.6.0</button></div>
   <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
   <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
   <input type="file" id="folder" webkitdirectory multiple hidden>
@@ -260,6 +278,7 @@ td .del:hover { color: var(--danger); }
         <option value="bl">Canto inferior esquerdo</option><option value="br">Canto inferior direito</option>
         <option value="none">Sem legenda</option></select></div>
       <label class="lrow chk" id="lkTagsRow"><input type="checkbox" id="lkTags"> Mostrar o nome (A1, C1…) junto da marcação</label>
+      <label class="lrow chk"><input type="checkbox" id="lkStamp"> Carimbo na imagem salva (versão, escala e data)</label>
       <div class="lrow"><span>Tamanho do texto</span><input type="range" id="lkSize" min="9" max="24"><output id="lkSizeV"></output></div>
       <div class="lrow"><span>Cor da marcação selecionada</span><div id="lkColors"></div></div>
       <p class="lnote">Vale para a tela e para a imagem salva.</p>
@@ -271,6 +290,7 @@ td .del:hover { color: var(--danger); }
   <span id="zoomLbl">100%</span>
   <button class="tbtn icon" id="btnZoomIn" title="Aumentar zoom (+)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg></button>
   <button class="tbtn" id="btnFit" title="Ajustar à janela (0)">Ajustar</button>
+  <button class="tbtn icon" id="btnAbout" title="Métodos, validação e como citar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></button>
   <button class="tbtn" id="btnInstall" hidden title="Instalar o MetricMod neste aparelho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg><span class="lbl">Instalar</span></button>
   <button class="tbtn" id="btnRes" title="Ver resultados">Resultados <b id="resCount">0</b></button>
 </header>
@@ -286,6 +306,7 @@ td .del:hover { color: var(--danger); }
       <p>Arraste uma ou várias fotos para cá, cole com Ctrl+V ou use os botões abaixo. As fotos precisam ter um objeto de medida conhecida, como uma régua, para definir a escala.</p>
       <button class="pbtn" id="btnOpen2">Abrir imagens</button> <button class="gbtn" id="btnFolder2">Abrir pasta</button>
       <p class="small">Também abre projetos salvos (.metricmod) e TIFF de microscópio.</p>
+      <p class="small">Uso em pesquisa e ensino. Veja como cada medida é calculada no botão <b>i</b> do topo.</p>
       <div id="resume" hidden><b>Continuar de onde parou?</b><span id="resumeTxt"></span><div><button class="pbtn" id="btnResume">Continuar</button> <button class="gbtn" id="btnDiscard">Começar do zero</button></div></div>
     </div></div>
     <div id="busy">Processando…</div>
@@ -306,6 +327,11 @@ td .del:hover { color: var(--danger); }
     <button class="tbtn" id="btnCopy">Copiar tabela</button>
     <button class="tbtn" id="btnPng">Salvar imagem marcada</button>
   </div>
+</aside>
+<aside id="about" hidden aria-label="Métodos e citação">
+  <div id="aboutHead"><h2>MetricMod <span id="aboutVer"></span></h2><button class="tbtn" id="aboutClose">Fechar</button></div>
+  <div class="seg" id="aboutTabs"><button data-t="metodos" class="on">Métodos</button><button data-t="validacao">Validação</button><button data-t="citar">Como citar</button><button data-t="novidades">Novidades</button><button data-t="creditos">Créditos</button></div>
+  <div id="aboutBody"></div>
 </aside>
 <div id="updBar" hidden>Há uma versão nova do MetricMod. <button class="pbtn" id="btnUpd">Atualizar agora</button></div>
 <script>/* MetricMod — núcleo de cálculo.
@@ -1187,10 +1213,88 @@ td .del:hover { color: var(--danger); }
   if (typeof module !== 'undefined' && module.exports) module.exports = MM; else root.MM = MM;
 })(typeof self !== 'undefined' ? self : this);
 </script>
+<script>/* MetricMod — conteúdo do painel "Métodos e citação". Texto em HTML simples. */
+(function (root) {
+  'use strict';
+  root.MM_ABOUT = {
+    url: 'https://metricmod.github.io/',
+    notice: 'Uso em pesquisa e ensino. O MetricMod não é destinado a diagnóstico clínico nem a decisões sobre tratamento de pacientes.',
+
+    // Um bloco por ferramenta: o que é calculado, como, e de onde vem o método.
+    methods: [
+      { t: 'Escala (calibração espacial)',
+        d: 'O usuário traça uma linha sobre um objeto de medida conhecida e informa o valor real. Pixels por unidade = comprimento da linha em pixels ÷ medida real. Todas as medidas são convertidas por esse fator; área usa o fator ao quadrado. A conversão entre unidades (nm a km, polegada, pé) é feita a partir do metro. TIFF salvo pelo ImageJ com escala é aberto já calibrado (campos <i>unit</i> e XResolution).' },
+      { t: 'Correção de perspectiva',
+        d: 'Os 4 cantos de um retângulo de medida conhecida definem uma homografia (transformação projetiva calculada pelo método da transformação linear direta, com 4 pares de pontos). A foto é reamostrada com interpolação bilinear de modo que o retângulo fique com proporções reais, e a escala passa a ser a do retângulo. Vale para objetos no mesmo plano do retângulo.',
+        r: 'Hartley, R.; Zisserman, A. <i>Multiple View Geometry in Computer Vision</i>. 2. ed. Cambridge University Press, 2004.' },
+      { t: 'Área desenhada (à mão livre e polígono)',
+        d: 'O contorno é convertido em pixels com a regra do ImageJ: um pixel pertence à região quando o seu centro está dentro do contorno. Área = número de pixels × (tamanho do pixel)². Perímetro do polígono = soma dos lados; à mão livre, o traçado é suavizado por média de 3 pontos antes de medir, como no ImageJ.',
+        ij: 'Mesma convenção do ImageJ 1.54 (PolygonFiller e PolygonRoi).' },
+      { t: 'Área por clique no objeto',
+        d: 'A imagem é suavizada (média 3×3) e a força de borda é calculada pelo operador de Sobel em cada canal de cor, usando o maior valor. A partir do ponto clicado, a região cresce absorvendo primeiro os pixels de borda mais fraca. A área em função do nível de borda tem um salto quando a região "vaza" pela borda do objeto; o contorno é a região estável logo antes do maior salto. A posição exata da borda é ajustada por watershed com marcadores, que a coloca onde a borda é mais nítida. Marcas de fundo e de objeto feitas pelo usuário restringem o resultado.',
+        r: 'Beucher, S.; Meyer, F. The morphological approach to segmentation: the watershed transformation. In: Dougherty, E. (ed.). <i>Mathematical Morphology in Image Processing</i>. Marcel Dekker, 1993, p. 433–481.' },
+      { t: 'Contorno magnético',
+        d: 'Entre um ponto e outro clicados, o caminho segue a borda: é o caminho de menor custo (algoritmo de Dijkstra) numa imagem de custo que é baixa onde a borda é forte. O contorno final é medido como uma área desenhada.',
+        r: 'Mortensen, E. N.; Barrett, W. A. Intelligent scissors for image composition. <i>Proceedings of SIGGRAPH 95</i>, 1995, p. 191–198.' },
+      { t: 'Detectar objetos',
+        d: 'A cor do fundo é estimada pela mediana dos pixels da borda da foto. Para cada pixel calcula-se a distância de cor até esse fundo, e o limiar que separa objeto e fundo é escolhido pelo método de Otsu (ajustável pela sensibilidade). Objetos são as regiões conectadas (vizinhança de 8 pixels), com furos opcionalmente preenchidos. Com "Refinar bordas", cada contorno é reposicionado por watershed sobre a força de borda.',
+        r: 'Otsu, N. A threshold selection method from gray-level histograms. <i>IEEE Transactions on Systems, Man, and Cybernetics</i>, v. 9, n. 1, p. 62–66, 1979.' },
+      { t: 'Separar objetos encostados',
+        d: 'Calcula-se, para cada pixel do objeto, a distância até o fundo (mapa de distância por chanfro 3-4). A inundação parte dos pontos mais centrais; quando duas regiões com centros distintos (proeminência de pelo menos 1 pixel) se encontram, o pixel vira linha divisória. É o mesmo princípio do comando Watershed binário do ImageJ.',
+        r: 'Borgefors, G. Distance transformations in digital images. <i>Computer Vision, Graphics, and Image Processing</i>, v. 34, p. 344–371, 1986.',
+        ij: 'Mesmo resultado do Watershed do ImageJ 1.54 na imagem de teste (18 objetos).' },
+      { t: 'Medidas de cada objeto',
+        d: '<b>Área</b>: pixels × (tamanho do pixel)². <b>Perímetro</b>: contorno traçado pelas bordas dos pixels, com correção dos cantos (método do ImageJ). <b>Comprimento e largura</b>: diâmetros de Feret máximo e mínimo, calculados sobre o fecho convexo do contorno. <b>Circularidade</b>: 4π × área ÷ perímetro², de 0 a 1 (1 = círculo). <b>Cor média</b>: média de vermelho, verde e azul dos pixels do objeto.',
+        ij: 'Área, Feret e Feret mínimo idênticos aos do ImageJ 1.54; perímetro com diferença máxima de 0,15%.' },
+      { t: 'Comprimento e Comprimento × Largura',
+        d: 'Distância em linha reta entre os pontos marcados. Em Comprimento × Largura, das duas linhas traçadas a maior é o comprimento e a menor, a largura; a razão C/L é calculada.' },
+      { t: 'Contagem de colônias',
+        d: 'Cada exemplo clicado é contornado como na "Área por clique". Do exemplo são aprendidos: a cor média e a variação de cor no espaço CIE L*a*b* (iluminante D65), a cor do fundo num anel de 3 a 8 pixels em volta, a área e a circularidade. Um pixel é marcado como colônia quando está dentro da tolerância de cor de algum exemplo e mais próximo da cor da colônia do que da cor do fundo. As regiões resultantes são filtradas por tamanho (faixa definida pelos exemplos) e por formato. Regiões grandes e irregulares são tratadas como colônias encostadas e contadas pela área ÷ área típica (marcadas ×2, ×3).' },
+      { t: 'Detecção da placa',
+        d: 'Transformada de Hough para círculos, com votos na direção do gradiente, numa cópia reduzida da foto. Entre os candidatos, escolhe-se o centro com o círculo mais nítido e, nele, o maior raio com borda forte. Só é aceito um círculo cuja borda aparece em pelo menos 60% da volta.',
+        r: 'Kimme, C.; Ballard, D.; Sklansky, J. Finding circles by an array of accumulators. <i>Communications of the ACM</i>, v. 18, n. 2, p. 120–122, 1975.' },
+      { t: 'Leitura de imagens',
+        d: 'JPG, PNG, WebP, BMP e GIF são lidos pelo navegador. TIFF é lido pelo próprio MetricMod (sem compressão, LZW, PackBits ou Deflate; 1, 8, 16 ou 32 bits; em faixas ou blocos; várias páginas). Imagens de 16 e 32 bits são exibidas com o contraste ajustado do mínimo ao máximo, como no ImageJ; as medidas geométricas não dependem desse ajuste.' },
+    ],
+
+    // Testes já feitos (imagens sintéticas com valor real conhecido).
+    validation: [
+      ['Área, Feret, Feret mínimo (6 formas)', 'ImageJ 1.54u', 'idênticos', ''],
+      ['Perímetro e circularidade (6 formas)', 'ImageJ 1.54u', 'até 0,15% e 0,3%', ''],
+      ['Polígono com cantos fracionários', '4.812 px (ImageJ)', '4.812 px', '0%'],
+      ['Feijões (elipses) por clique, foto com desfoque', 'área geométrica', '+1,1% a +1,4%', 'limiar: +1,5% a +1,9%'],
+      ['Objeto com metade da cor do fundo, por clique', '122.485 px', '121.074 px', '−1,2% (limiar: −17,9%)'],
+      ['Contorno magnético (feijão)', '16.415 px', '16.622 px', '+1,3%'],
+      ['Foto inclinada com correção de perspectiva', '2,565 cm²', '2,598 cm²', '+1,3% (sem correção: +4,5%)'],
+      ['Placa com 60 colônias, 3 pares encostados e 15 de outro tipo', '60', '60', 'também com luz irregular'],
+      ['Objetos encostados (pares, trios, tamanhos diferentes)', '18 (Watershed do ImageJ)', '18', 'igual'],
+      ['Detecção da placa', 'centro (700, 550), raio 494 px', 'centro (700,5, 550,5), raio 501 px', 'raio +1,4%'],
+      ['Leitura de TIFF (17 variações)', 'arquivo original', 'pixels idênticos', '0'],
+    ],
+    validationNote: 'Testes feitos com imagens geradas por computador, em que o valor real é conhecido, e com o ImageJ 1.54u compilado do código-fonte oficial. A validação com amostras reais de laboratório está em andamento e será publicada aqui.',
+
+    credits: [
+      'Os algoritmos de medição seguem as convenções do <b>ImageJ 1.54</b> (Wayne Rasband, National Institutes of Health, EUA), que é de domínio público, e foram conferidos contra ele. O MetricMod não contém código do ImageJ e não é afiliado ao NIH nem ao projeto ImageJ.',
+      'Referência do ImageJ: Schneider, C. A.; Rasband, W. S.; Eliceiri, K. W. NIH Image to ImageJ: 25 years of image analysis. <i>Nature Methods</i>, v. 9, p. 671–675, 2012.',
+      'Os demais métodos estão citados junto de cada ferramenta.',
+    ],
+
+    changelog: [
+      ['0.6', 'Painel "Métodos e citação" (métodos, validação, créditos, como citar); versão visível no app, na planilha, no projeto e na imagem salva.'],
+      ['0.5', 'App instalável (funciona sem internet e se atualiza sozinho); salvar e abrir projeto; salvamento automático; ações em lote; separar objetos encostados; TIFF e HEIC.'],
+      ['0.4', 'Placa detectada e editável; contagem de colônias com 3 exemplos; versão para celular.'],
+      ['0.3', 'Várias fotos; grupos e tratamentos; correção de perspectiva; contagem de colônias.'],
+      ['0.2', 'Contorno por bordas e contorno magnético; aparência das marcações e legenda; tema preto.'],
+      ['0.1', 'Primeira versão: escala, área, detecção, comprimento, comprimento × largura, contagem e ajuste de contorno.'],
+    ],
+  };
+})(typeof self !== 'undefined' ? self : this);
+</script>
 <script>/* MetricMod — interface de janela única com fluxos guiados. */
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
+  const APP_VERSION = '0.6.0', AB = window.MM_ABOUT;
   const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('canvasWrap'), guide = $('guide');
   const COLORS = ['#ff3d7f', '#00b3e6', '#ffb000', '#8f6bff', '#00c48c', '#ff6b2c', '#e040fb', '#4fc3f7'];
   const PREFIX = { area: 'A', length: 'C', lw: 'CL', count: 'N', colony: 'P' };
@@ -1201,7 +1305,7 @@ td .del:hover { color: var(--danger); }
     sel: null, tool: null, flow: {}, undo: [], redo: [],
     sens: 50, fill: true, excl: false, refine: true, minArea: 0, brushPx: 18, preview: null, previewCount: null,
     pointer: null, space: false, drag: null, grad: null,
-    style: { width: 2, dash: 'solid', legend: 'line', size: 13, tags: true },
+    style: { width: 2, dash: 'solid', legend: 'line', size: 13, tags: true, stamp: true },
   };
   try { Object.assign(S.style, JSON.parse(localStorage.getItem('metricmod.style') || '{}')); } catch { /* sem armazenamento */ }
   const saveStyle = () => { try { localStorage.setItem('metricmod.style', JSON.stringify(S.style)); } catch { /* ignora */ } };
@@ -2188,7 +2292,9 @@ td .del:hover { color: var(--danger); }
   function exportRows() {
     stash();
     const photos = S.photos.length ? S.photos : [];
-    const rows = [['MetricMod'], ['Fotos', String(photos.length)], ['Unidade dos resultados', unit()], []];
+    const now = new Date();
+    const rows = [['MetricMod', `versão ${APP_VERSION}`], ['Análise exportada em', `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR')}`], ['Endereço', AB.url],
+      ['Fotos', String(photos.length)], ['Unidade dos resultados', unit()], ['Aviso', AB.notice], []];
     const secs = new Map(); // kind -> {title, cols, rows:[]}
     const colonyList = [];
     photos.forEach((p) => {
@@ -2240,7 +2346,13 @@ td .del:hover { color: var(--danger); }
     if (!S.img) return;
     const c = document.createElement('canvas'); c.width = S.W; c.height = S.H; const g = c.getContext('2d');
     g.drawImage(S.imgCanvas, 0, 0); for (const o of S.objs) if (o.kind === 'area' && o.mask.w) g.drawImage(maskCanvas(o), o.mask.x, o.mask.y);
-    drawOverlays(g, (x, y) => [x, y], Math.max(1, Math.max(S.W, S.H) / 1100));
+    const uu = Math.max(1, Math.max(S.W, S.H) / 1100);
+    drawOverlays(g, (x, y) => [x, y], uu);
+    if (S.style.stamp) { // carimbo: versão, escala e data, para a figura ser rastreável
+      const txt = `MetricMod ${APP_VERSION} · ${S.scale ? `1 ${S.scale.unit} = ${nf(S.scale.ppu, 2)} px` : 'sem escala'} · ${new Date().toLocaleDateString('pt-BR')}`;
+      g.font = `500 ${11 * uu}px Bahnschrift, "Segoe UI", sans-serif`; const w = g.measureText(txt).width + 12 * uu, h = 18 * uu;
+      g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(6 * uu, S.H - h - 6 * uu, w, h); g.fillStyle = '#fff'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(txt, 12 * uu, S.H - h / 2 - 6 * uu);
+    }
     c.toBlob((b) => { download(b, `${baseName()}-marcada.png`); toast('Imagem marcada salva na pasta de downloads.'); });
   };
 
@@ -2343,7 +2455,7 @@ td .del:hover { color: var(--danger); }
     const st = S.style;
     $('lkWidth').value = st.width; $('lkWidthV').textContent = nf(st.width, st.width % 1 ? 1 : 0) + ' px';
     $('lkSize').value = st.size; $('lkSizeV').textContent = st.size + ' px';
-    $('lkLegend').value = st.legend; $('lkTags').checked = st.tags; $('lkTagsRow').hidden = st.legend === 'line';
+    $('lkLegend').value = st.legend; $('lkTags').checked = st.tags; $('lkStamp').checked = st.stamp !== false; $('lkTagsRow').hidden = st.legend === 'line';
     $('lkDash').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === st.dash));
     const o = selObj();
     $('lkColors').innerHTML = o ? COLORS.concat(['#ffffff', '#ffe600']).map((c) => `<button class="swb ${o.color === c ? 'on' : ''}" data-c="${c}" style="background:${c}" title="${c}"></button>`).join('') + `<input type="color" id="lkCustom" value="${o.color}" title="Outra cor">` : '<em>Selecione uma medição na imagem ou na tabela.</em>';
@@ -2358,6 +2470,7 @@ td .del:hover { color: var(--danger); }
   $('lkSize').oninput = (e) => setStyle('size', +e.target.value);
   $('lkLegend').onchange = (e) => setStyle('legend', e.target.value);
   $('lkTags').onchange = (e) => setStyle('tags', e.target.checked);
+  $('lkStamp').onchange = (e) => setStyle('stamp', e.target.checked);
   $('lkDash').querySelectorAll('button').forEach((b) => b.onclick = () => setStyle('dash', b.dataset.v));
 
   /* ---------- projeto: salvar, abrir e salvamento automático ---------- */
@@ -2374,7 +2487,7 @@ td .del:hover { color: var(--danger); }
   }
   function projectHeader() {
     stash();
-    return { app: 'MetricMod', version: 1, saved: new Date().toISOString(), cur: S.cur, group: S.group, groups: S.groups, dispUnit: S.dispUnit, lastScale: S.lastScale, style: S.style,
+    return { app: 'MetricMod', version: 1, appVersion: APP_VERSION, saved: new Date().toISOString(), cur: S.cur, group: S.group, groups: S.groups, dispUnit: S.dispUnit, lastScale: S.lastScale, style: S.style,
       photos: S.photos.map((p) => ({ uid: p.uid, name: p.name, corrected: !!(p.canvas || p.orig), scale: p.scale, view: p.view, seq: p.seq, objs: p.objs.map(serObj) })) };
   }
   async function buildProject() {
@@ -2399,7 +2512,11 @@ td .del:hover { color: var(--danger); }
   async function openProject(file) {
     if (S.photos.some((p) => p.objs.length) && !confirm('Abrir o projeto substitui as fotos e medições abertas agora. Continuar?')) return;
     busy(true);
-    try { const { head, blobs } = await readProject(file); restoreProject(head, blobs); toast(`Projeto aberto: ${head.photos.length} foto(s).`); scheduleSave(true); }
+    try {
+      const { head, blobs } = await readProject(file); restoreProject(head, blobs);
+      toast(head.appVersion && head.appVersion !== APP_VERSION ? `Projeto aberto: ${head.photos.length} foto(s). Ele foi medido na versão ${head.appVersion}; você está usando a ${APP_VERSION}. Medições novas podem ter pequenas diferenças (veja Novidades).` : `Projeto aberto: ${head.photos.length} foto(s).`);
+      scheduleSave(true);
+    }
     catch (e) { toast(`Não consegui abrir o projeto: ${e.message}.`); }
     busy(false);
   }
@@ -2453,6 +2570,45 @@ td .del:hover { color: var(--danger); }
     } catch (e) { /* sem IndexedDB */ }
   }
   checkAutoSave();
+  /* ---------- painel Métodos e citação ---------- */
+  const MESES = ['jan.', 'fev.', 'mar.', 'abr.', 'maio', 'jun.', 'jul.', 'ago.', 'set.', 'out.', 'nov.', 'dez.'];
+  function citations() {
+    const d = new Date(), ano = '2026', acesso = `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+    return {
+      abnt: `METRICMOD. <i>MetricMod</i>: medição de imagens científicas. Versão ${APP_VERSION}. [<i>S. l.</i>]: MetricMod, ${ano}. Programa de computador. Disponível em: ${AB.url}. Acesso em: ${acesso}.`,
+      apa: `MetricMod. (${ano}). <i>MetricMod: Medição de imagens científicas</i> (Versão ${APP_VERSION}) [Software]. ${AB.url}`,
+      metodo: `As medições foram feitas no MetricMod, versão ${APP_VERSION} (${AB.url}). A escala espacial foi definida por um objeto de medida conhecida presente em cada foto. [Descreva aqui as medidas usadas, por exemplo: a área foliar foi obtida pela detecção automática do contorno; o comprimento e a largura, pelos diâmetros de Feret máximo e mínimo.]`,
+    };
+  }
+  function renderAbout(tab) {
+    const b = $('aboutBody'); $('aboutVer').textContent = `versão ${APP_VERSION}`;
+    document.querySelectorAll('#aboutTabs button').forEach((x) => x.classList.toggle('on', x.dataset.t === tab));
+    const notice = `<div class="notice">${AB.notice}</div>`;
+    if (tab === 'metodos') b.innerHTML = notice + '<p>Como cada medida é calculada. Use estas descrições e referências na metodologia do seu trabalho.</p>' +
+      AB.methods.map((m) => `<h3>${m.t}</h3><p>${m.d}</p>${m.ij ? `<p class="ij">${m.ij}</p>` : ''}${m.r ? `<p class="ref">Referência: ${m.r}</p>` : ''}`).join('');
+    else if (tab === 'validacao') b.innerHTML = `<p>${AB.validationNote}</p><table><thead><tr><th>Teste</th><th>Valor de referência</th><th>MetricMod</th><th>Diferença</th></tr></thead><tbody>` +
+      AB.validation.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+    else if (tab === 'citar') {
+      const c = citations();
+      b.innerHTML = '<p>Cite a versão que você usou: ela aparece aqui, no topo do app, na planilha exportada e no projeto salvo.</p>' +
+        [['ABNT', 'abnt'], ['APA', 'apa'], ['Texto para a metodologia', 'metodo']].map(([t, k]) => `<h3>${t}</h3><div class="cite" id="cite-${k}">${c[k]}</div><div class="row"><button class="gbtn" data-copy="${k}">Copiar</button></div>`).join('') +
+        '<p class="ref">Na referência ABNT, a data de acesso é a de hoje. Ajuste se a análise foi feita em outro dia.</p>';
+      b.querySelectorAll('[data-copy]').forEach((x) => x.onclick = async () => {
+        const t = $('cite-' + x.dataset.copy).innerText;
+        try { await navigator.clipboard.writeText(t); } catch { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+        toast('Copiado.');
+      });
+    } else if (tab === 'novidades') b.innerHTML = '<p>O que mudou em cada versão.</p>' + AB.changelog.map(([v, t]) => `<h3>Versão ${v}${APP_VERSION.startsWith(v) ? ' (atual)' : ''}</h3><p>${t}</p>`).join('');
+    else b.innerHTML = notice + AB.credits.map((t) => `<p>${t}</p>`).join('');
+    b.scrollTop = 0;
+  }
+  const openAbout = (tab) => { $('about').hidden = false; renderAbout(tab || 'metodos'); };
+  $('btnAbout').onclick = () => openAbout('metodos');
+  $('verBadge').onclick = (e) => { e.stopPropagation(); openAbout('novidades'); };
+  $('aboutClose').onclick = () => { $('about').hidden = true; };
+  document.querySelectorAll('#aboutTabs button').forEach((x) => x.onclick = () => renderAbout(x.dataset.t));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('about').hidden) { $('about').hidden = true; e.stopImmediatePropagation(); } }, true);
+
   $('btnRes').onclick = () => document.body.classList.toggle('showRes');
   $('resClose').onclick = () => document.body.classList.remove('showRes');
 
