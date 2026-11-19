@@ -1279,8 +1279,9 @@
       reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) ask(w); }); });
       setInterval(() => reg.update().catch(() => {}), 3600e3);
     }).catch(() => {});
-    let reloading = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading) { reloading = true; location.reload(); } });
+    // recarrega só quando uma versão nova substitui a anterior (não na primeira visita)
+    let reloading = false; const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading && hadController) { reloading = true; location.reload(); } });
   }
   // abrir arquivos pelo sistema ("Abrir com > MetricMod") quando instalado no computador
   if ('launchQueue' in window) window.launchQueue.setConsumer(async (lp) => { if (lp.files && lp.files.length) addFiles(await Promise.all(lp.files.map((h) => h.getFile()))); });

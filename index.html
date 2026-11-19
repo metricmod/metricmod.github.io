@@ -235,7 +235,7 @@ td .del:hover { color: var(--danger); }
 </head>
 <body>
 <header id="top">
-  <div id="brand" title="MetricMod 0.5.0"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod</div>
+  <div id="brand" title="MetricMod 0.5.1"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod</div>
   <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
   <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
   <input type="file" id="folder" webkitdirectory multiple hidden>
@@ -2468,8 +2468,9 @@ td .del:hover { color: var(--danger); }
       reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) ask(w); }); });
       setInterval(() => reg.update().catch(() => {}), 3600e3);
     }).catch(() => {});
-    let reloading = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading) { reloading = true; location.reload(); } });
+    // recarrega só quando uma versão nova substitui a anterior (não na primeira visita)
+    let reloading = false; const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading && hadController) { reloading = true; location.reload(); } });
   }
   // abrir arquivos pelo sistema ("Abrir com > MetricMod") quando instalado no computador
   if ('launchQueue' in window) window.launchQueue.setConsumer(async (lp) => { if (lp.files && lp.files.length) addFiles(await Promise.all(lp.files.map((h) => h.getFile()))); });
