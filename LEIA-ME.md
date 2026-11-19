@@ -1,7 +1,7 @@
-# MetricMod — versão 0.5
+# MetricMod — versão 0.5.2
 
 Abra **MetricMod.html** com dois cliques (Chrome ou Edge). Funciona sem internet e sem instalar nada.
-Para ter como app instalado no computador e no celular, veja **PUBLICAR.md** (usa a pasta `site`).
+Versão instalável publicada em **https://dragao6662011-crypto.github.io/metricmod/** (veja PUBLICAR.md).
 
 ## Como usar
 1. **Abrir imagens**: uma ou várias fotos de uma vez, ou o botão de pasta para abrir uma pasta inteira. Também dá para arrastar ou colar (Ctrl+V).
