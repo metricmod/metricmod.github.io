@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MetricMod</title>
+<!--PWA-->
+<style>/*CSS*/</style>
+</head>
+<body>
+<header id="top">
+  <div id="brand" title="MetricMod __VERSION__"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod</div>
+  <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
+  <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
+  <input type="file" id="folder" webkitdirectory multiple hidden>
+  <button class="tbtn icon" id="btnFolder" title="Abrir uma pasta inteira de fotos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/><path d="M12 12v5M9.5 14.5h5"/></svg></button>
+  <button class="tbtn icon" id="btnSave" title="Salvar projeto: fotos e medições, para continuar depois (Ctrl+S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg></button>
+  <div id="photoNav" hidden>
+    <button class="tbtn icon" id="photoPrev" title="Foto anterior (PageUp)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg></button>
+    <select id="photoSel" title="Escolher foto"></select>
+    <button class="tbtn icon" id="photoNext" title="Próxima foto (PageDown)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 5 7 7-7 7"/></svg></button>
+  </div>
+  <button class="tbtn icon" id="btnUndo" title="Desfazer (Ctrl+Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+  <button class="tbtn icon" id="btnRedo" title="Refazer (Ctrl+Y)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
+  <div class="spacer"></div>
+  <div id="lookWrap">
+    <button class="tbtn" id="btnLook" aria-expanded="false" aria-controls="lookPanel" title="Espessura, tipo de linha, cores e legenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16" /><path d="M4 18h3M10 18h3M16 18h4"/></svg><span class="lbl">Aparência</span></button>
+    <div id="lookPanel" hidden>
+      <div class="lrow"><span>Espessura da linha</span><input type="range" id="lkWidth" min="1" max="8" step="0.5"><output id="lkWidthV"></output></div>
+      <div class="lrow"><span>Tipo de linha</span><div class="seg" id="lkDash"><button data-v="solid">Contínua</button><button data-v="dash">Tracejada</button><button data-v="dot">Pontilhada</button></div></div>
+      <div class="lrow"><span>Legenda</span><select id="lkLegend">
+        <option value="line">Junto de cada marcação</option>
+        <option value="tl">Canto superior esquerdo</option><option value="tr">Canto superior direito</option>
+        <option value="bl">Canto inferior esquerdo</option><option value="br">Canto inferior direito</option>
+        <option value="none">Sem legenda</option></select></div>
+      <label class="lrow chk" id="lkTagsRow"><input type="checkbox" id="lkTags"> Mostrar o nome (A1, C1…) junto da marcação</label>
+      <div class="lrow"><span>Tamanho do texto</span><input type="range" id="lkSize" min="9" max="24"><output id="lkSizeV"></output></div>
+      <div class="lrow"><span>Cor da marcação selecionada</span><div id="lkColors"></div></div>
+      <p class="lnote">Vale para a tela e para a imagem salva.</p>
+    </div>
+  </div>
+  <button id="scaleChip" title="Definir escala">Sem escala — resultados em pixels</button>
+  <label id="unitLbl"><span class="lbl">Resultados em</span> <select id="dispUnit" disabled><option>px</option></select></label>
+  <button class="tbtn icon" id="btnZoomOut" title="Diminuir zoom (−)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
+  <span id="zoomLbl">100%</span>
+  <button class="tbtn icon" id="btnZoomIn" title="Aumentar zoom (+)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg></button>
+  <button class="tbtn" id="btnFit" title="Ajustar à janela (0)">Ajustar</button>
+  <button class="tbtn" id="btnInstall" hidden title="Instalar o MetricMod neste aparelho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg><span class="lbl">Instalar</span></button>
+  <button class="tbtn" id="btnRes" title="Ver resultados">Resultados <b id="resCount">0</b></button>
+</header>
+
+<nav id="tools" aria-label="Ferramentas"></nav>
+
+<main id="stage">
+  <div id="guide"></div>
+  <div id="canvasWrap">
+    <canvas id="cv"></canvas>
+    <div id="empty"><div class="box">
+      <h1>Abra uma foto para começar</h1>
+      <p>Arraste uma ou várias fotos para cá, cole com Ctrl+V ou use os botões abaixo. As fotos precisam ter um objeto de medida conhecida, como uma régua, para definir a escala.</p>
+      <button class="pbtn" id="btnOpen2">Abrir imagens</button> <button class="gbtn" id="btnFolder2">Abrir pasta</button>
+      <p class="small">Também abre projetos salvos (.metricmod) e TIFF de microscópio.</p>
+      <div id="resume" hidden><b>Continuar de onde parou?</b><span id="resumeTxt"></span><div><button class="pbtn" id="btnResume">Continuar</button> <button class="gbtn" id="btnDiscard">Começar do zero</button></div></div>
+    </div></div>
+    <div id="busy">Processando…</div>
+    <div id="toast"></div>
+  </div>
+</main>
+
+<aside id="results">
+  <div id="resHead"><h2>Resultados</h2><span id="resSub"></span><button class="tbtn" id="resClose">Fechar</button></div>
+  <div id="groupBar" hidden>
+    <label for="groupIn">Grupo das próximas medições</label>
+    <div class="grow"><input id="groupIn" list="groupList" placeholder="Sem grupo (digite, ex.: Tratamento A)" autocomplete="off"><datalist id="groupList"></datalist>
+    <button class="gbtn" id="groupAll" title="Coloca todas as medições desta foto no grupo escolhido">Aplicar à foto</button></div>
+  </div>
+  <div id="resBody"></div>
+  <div id="resFoot">
+    <button class="tbtn wide" id="btnCsv">Exportar para Excel (.csv)</button>
+    <button class="tbtn" id="btnCopy">Copiar tabela</button>
+    <button class="tbtn" id="btnPng">Salvar imagem marcada</button>
+  </div>
+</aside>
+<div id="updBar" hidden>Há uma versão nova do MetricMod. <button class="pbtn" id="btnUpd">Atualizar agora</button></div>
+<script>/*CORE*/</script>
+<script>/*APP*/</script>
+</body>
+</html>

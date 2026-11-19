@@ -1,0 +1,2482 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MetricMod</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="MetricMod">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="favicon-32.png">
+<style>:root {
+  --bg: #000000;
+  --raise: #121618;        /* botões e campos */
+  --raise-2: #1b2124;      /* hover */
+  --line: #262d31;
+  --line-2: #3a454b;
+  --text: #eef2f0;
+  --soft: #93a19d;
+  --accent: #35c2a6;       /* verde-água: ação principal */
+  --accent-ink: #00110d;
+  --accent-soft: rgba(53, 194, 166, .14);
+  --scale: #f5b700;
+  --danger: #ff6b6b;
+  --num: "Bahnschrift", "DIN Alternate", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --body: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font: 14px/1.45 var(--body); color: var(--text); background: var(--bg);
+  display: grid; grid-template-rows: 54px 1fr; grid-template-columns: 220px 1fr 400px;
+  grid-template-areas: "top top top" "tools stage results"; overflow: hidden;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type=range] { accent-color: var(--accent); }
+input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+
+/* barra superior */
+#top { grid-area: top; display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); background: var(--bg); position: relative; z-index: 5; }
+#brand { font: 600 20px/1 var(--num); margin-right: 10px; display: flex; align-items: center; gap: 8px; }
+#brand svg { width: 22px; height: 22px; }
+.tbtn { border: 1px solid var(--line-2); background: var(--raise); border-radius: 8px; height: 34px; padding: 0 12px; display: inline-flex; align-items: center; gap: 7px; }
+.tbtn:hover:not(:disabled) { background: var(--raise-2); border-color: #56646b; }
+.tbtn:disabled { opacity: .35; }
+.tbtn.icon { width: 34px; padding: 0; justify-content: center; }
+.tbtn svg { width: 17px; height: 17px; }
+.spacer { flex: 1; }
+#scaleChip { font: 500 13px var(--num); padding: 7px 12px; border-radius: 999px; background: rgba(245, 183, 0, .12); color: #ffd25a; border: 1px solid rgba(245, 183, 0, .45); }
+#scaleChip.set { background: var(--accent-soft); color: var(--accent); border-color: rgba(53, 194, 166, .45); }
+#unitLbl { font-size: 13px; color: var(--soft); display: inline-flex; align-items: center; gap: 6px; margin-right: 6px; }
+select { height: 34px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 6px; background: var(--raise); font: 500 13px var(--num); }
+select:disabled { opacity: .4; }
+#photoNav { display: inline-flex; align-items: center; gap: 4px; }
+#photoNav[hidden] { display: none; }
+#photoSel { max-width: 240px; }
+#resSub { color: var(--soft); font-size: 12px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#groupBar { padding: 10px 16px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+#groupBar[hidden] { display: none; }
+#groupBar label { font-size: 12px; color: var(--soft); }
+#groupBar .grow { display: flex; gap: 6px; }
+#groupIn { flex: 1; min-width: 0; height: 34px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 10px; background: var(--raise); }
+#groupIn::placeholder { color: #66736f; }
+td.gcell select { height: 26px; font-size: 12px; padding: 0 2px; max-width: 92px; }
+#zoomLbl { font: 500 13px var(--num); min-width: 46px; text-align: center; color: var(--soft); }
+
+/* painel de aparência */
+#lookWrap { position: relative; }
+#lookPanel { position: absolute; right: 0; top: 42px; width: 360px; background: #0d1012; border: 1px solid var(--line-2); border-radius: 12px; padding: 14px 16px; box-shadow: 0 14px 40px rgba(0, 0, 0, .7); display: grid; gap: 12px; }
+#lookPanel[hidden] { display: none; }
+.lrow { display: grid; grid-template-columns: 1fr; gap: 6px; font-size: 13px; color: var(--soft); }
+.lrow:has(output) { grid-template-columns: 1fr 52px; align-items: center; }
+.lrow:has(output) span { grid-column: span 2; }
+.lrow output { font: 500 13px var(--num); color: var(--text); text-align: right; }
+.lrow.chk { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.lrow select { width: 100%; }
+#lkColors { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#lkColors em { font-style: normal; color: var(--soft); }
+.swb { width: 26px; height: 26px; border-radius: 7px; border: 2px solid transparent; outline: 1px solid rgba(255, 255, 255, .15); }
+.swb.on { border-color: #fff; }
+#lkCustom { width: 34px; height: 28px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--raise); padding: 2px; }
+.lnote { margin: 0; font-size: 12px; color: var(--soft); }
+
+/* ferramentas */
+#tools { grid-area: tools; padding: 14px 10px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; overflow-y: auto; }
+#tools h2 { font: 600 12px var(--body); color: var(--soft); margin: 14px 8px 6px; }
+#tools h2:first-child { margin-top: 0; }
+.tool { display: grid; grid-template-columns: 36px 1fr; align-items: center; gap: 10px; text-align: left; border: 1px solid transparent; background: none; border-radius: 10px; padding: 7px 8px; }
+.tool .ic { width: 36px; height: 36px; border-radius: 9px; display: grid; place-items: center; background: var(--raise); border: 1px solid var(--line-2); }
+.tool .ic svg { width: 20px; height: 20px; }
+.tool b { font: 500 15px/1.15 var(--num); display: block; }
+.tool small { color: var(--soft); font-size: 12px; display: block; margin-top: 2px; line-height: 1.25; }
+.tool:hover:not(:disabled) { background: var(--raise); }
+.tool.active { background: var(--accent-soft); border-color: rgba(53, 194, 166, .5); }
+.tool.active .ic { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tool:disabled { opacity: .35; }
+.tool.pulse .ic { animation: pulse 1.6s ease-in-out 3; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(245, 183, 0, .5); } }
+@media (prefers-reduced-motion: reduce) { .tool.pulse .ic { animation: none; box-shadow: 0 0 0 3px var(--scale); } }
+
+/* palco */
+#stage { grid-area: stage; position: relative; background: var(--bg); overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+#guide { border-bottom: 1px solid var(--line); padding: 12px 18px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-height: 64px; background: #07090a; }
+#guide .step { font: 600 13px var(--num); color: var(--accent-ink); background: var(--accent); border-radius: 6px; padding: 4px 9px; white-space: nowrap; }
+#guide .msg { font: 500 17px/1.3 var(--num); flex: 1 1 280px; }
+#guide .msg em { font-style: normal; color: var(--soft); font-family: var(--body); font-size: 13px; display: block; font-weight: 400; margin-top: 3px; max-width: 72ch; }
+#guide .ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#guide label { font-size: 13px; color: var(--soft); display: inline-flex; align-items: center; gap: 6px; }
+#guide input[type=number] { width: 88px; height: 34px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0 8px; font: 500 15px var(--num); background: var(--raise); }
+#guide input[type=range] { width: 140px; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; }
+.seg button { border: 0; background: var(--raise); padding: 0 12px; height: 32px; border-right: 1px solid var(--line-2); white-space: nowrap; }
+.seg button:last-child { border-right: 0; }
+.seg button:hover:not(:disabled):not(.on) { background: var(--raise-2); }
+.seg button.on { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.seg button:disabled { opacity: .35; }
+.pbtn { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 8px; height: 34px; padding: 0 15px; font-weight: 600; }
+.pbtn:hover:not(:disabled) { filter: brightness(1.1); }
+.pbtn:disabled { opacity: .4; }
+.gbtn { border: 1px solid var(--line-2); background: var(--raise); border-radius: 8px; height: 34px; padding: 0 12px; }
+.gbtn:hover { background: var(--raise-2); }
+#canvasWrap { position: relative; overflow: hidden; }
+#cv { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+#empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 20px; }
+#empty .box { border: 1.5px dashed var(--line-2); border-radius: 18px; padding: 46px 54px; max-width: 540px; }
+#empty h1 { font: 500 30px/1.15 var(--num); margin: 0 0 12px; }
+#empty p { margin: 0 0 24px; color: var(--soft); }
+#empty p.small { font-size: 12.5px; margin: 16px 0 0; }
+#resume { margin-top: 22px; border-top: 1px solid var(--line-2); padding-top: 18px; display: grid; gap: 8px; justify-items: center; }
+#resume[hidden] { display: none; }
+#resume span { color: var(--soft); font-size: 13px; }
+#empty .box { pointer-events: auto; }
+#empty.drag .box { border-color: var(--scale); background: rgba(245, 183, 0, .05); }
+#busy { position: absolute; right: 14px; bottom: 14px; background: var(--raise-2); border: 1px solid var(--line-2); padding: 7px 12px; border-radius: 8px; font-size: 13px; display: none; }
+#toast { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); background: #e9efec; color: #071010; padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 80%; text-align: center; }
+#toast.show { opacity: 1; }
+
+/* resultados */
+#results { grid-area: results; border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+#resHead { padding: 14px 16px 10px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); }
+#resHead h2 { font: 600 17px var(--num); margin: 0; flex: 1; }
+#resBody { overflow-y: auto; flex: 1; padding: 6px 0 20px; }
+.sec { padding: 10px 16px 4px; overflow-x: auto; }
+.sec h3 { font: 600 14px var(--num); margin: 4px 0 8px; display: flex; justify-content: space-between; }
+.sec h3 span { color: var(--soft); font-weight: 400; font-family: var(--body); font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: right; font-weight: 500; color: var(--soft); font-size: 11.5px; padding: 4px 3px; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+td { text-align: right; padding: 5px 3px; border-bottom: 1px solid var(--line); font: 400 14px var(--num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: var(--raise); }
+tr.row.sel td { background: var(--accent-soft); }
+tr.sum td { color: var(--soft); font-size: 12.5px; border-bottom: 0; }
+td .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+td .sw { display: inline-block; width: 16px; height: 12px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, .2); vertical-align: -2px; }
+td .del { border: 0; background: none; color: var(--soft); padding: 0 2px; font-size: 15px; visibility: hidden; }
+tr.row:hover .del, tr.row.sel .del { visibility: visible; }
+td .del:hover { color: var(--danger); }
+#resEmpty { color: var(--soft); padding: 30px 22px; font-size: 13.5px; }
+#resFoot { border-top: 1px solid var(--line); padding: 12px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#resFoot .tbtn { justify-content: center; }
+#resFoot .wide { grid-column: span 2; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+#resFoot .wide:hover { filter: brightness(1.1); background: var(--accent); }
+
+@media (max-width: 1150px) {
+  body { grid-template-columns: 76px 1fr 320px; }
+  .tool { grid-template-columns: 36px; justify-content: center; }
+  .tool b, .tool small, #tools h2 { display: none; }
+  #unitLbl span { display: none; }
+}
+
+#btnRes, #resClose, #guide .tips { display: none; }
+#btnInstall[hidden] { display: none; }
+#updBar { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 40; background: #0d1012; border: 1px solid var(--accent); border-radius: 12px; padding: 10px 12px 10px 16px; display: flex; gap: 12px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.7); }
+#updBar[hidden] { display: none; }
+#guide .tips { border: 1px solid var(--line-2); background: var(--raise); border-radius: 999px; width: 30px; height: 30px; align-items: center; justify-content: center; font: 600 14px var(--num); }
+#btnRes b { font: 600 12px var(--num); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 1px 7px; }
+
+/* ---------- celular e telas estreitas ---------- */
+@media (max-width: 820px) {
+  body { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: "top" "stage" "tools"; height: 100dvh; }
+  #top { height: auto; min-height: 52px; padding: 8px; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  #top::-webkit-scrollbar { display: none; }
+  #top > * { flex: none; }
+  #brand { font-size: 0; margin-right: 2px; }
+  #brand svg { width: 24px; height: 24px; }
+  .lbl { display: none; }
+  .tbtn { height: 38px; }
+  .tbtn.icon { width: 38px; }
+  #scaleChip { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #zoomLbl, #btnZoomIn, #btnZoomOut { display: none; }
+  #photoSel { max-width: 130px; }
+  #btnRes { display: inline-flex; }
+  .spacer { display: none; }
+  #lookPanel { position: fixed; left: 8px; right: 8px; top: 60px; width: auto; max-height: calc(100dvh - 80px); overflow-y: auto; z-index: 30; }
+
+  #tools { grid-area: tools; flex-direction: row; gap: 2px; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); border-right: 0; border-top: 1px solid var(--line); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  #tools::-webkit-scrollbar { display: none; }
+  #tools h2 { display: none; }
+  .tool { flex: none; width: 74px; grid-template-columns: 1fr; justify-items: center; text-align: center; gap: 4px; padding: 6px 2px; }
+  .tool b { display: block; font-size: 11.5px; line-height: 1.15; }
+  .tool small { display: none; }
+  .tool .ic { width: 40px; height: 40px; }
+
+  #guide { padding: 8px 10px; gap: 8px; min-height: 0; max-height: 46dvh; overflow-y: auto; }
+  #guide .msg { font-size: 15px; flex: 1 1 0; min-width: 60%; }
+  #guide .msg em { font-size: 12px; display: none; }
+  #guide.open .msg em { display: block; }
+  #guide .tips { display: inline-flex; }
+  #guide .ctl { gap: 6px; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; padding-bottom: 2px; }
+  #guide .ctl::-webkit-scrollbar { display: none; }
+  #guide .ctl > * { flex: none; }
+  #brand { order: -3; } #btnRes { order: -2; }
+  #guide input[type=range] { width: 110px; }
+  .seg { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .seg button { height: 34px; padding: 0 10px; font-size: 13px; }
+  .pbtn, .gbtn { height: 38px; }
+
+  #results { position: fixed; left: 0; right: 0; bottom: 0; height: 78dvh; z-index: 25; background: #000; border: 1px solid var(--line-2); border-bottom: 0; border-radius: 16px 16px 0 0; transform: translateY(105%); transition: transform .25s ease; box-shadow: 0 -10px 40px rgba(0, 0, 0, .8); }
+  body.showRes #results { transform: none; }
+  #resClose { display: inline-flex; }
+  #resSub { display: none; }
+  #empty .box { padding: 28px 20px; }
+  #empty h1 { font-size: 23px; }
+  #toast { bottom: 10px; max-width: 94%; }
+}
+@media (max-width: 820px) and (prefers-reduced-motion: reduce) { #results { transition: none; } }
+</style>
+</head>
+<body>
+<header id="top">
+  <div id="brand" title="MetricMod 0.5.0"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod</div>
+  <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
+  <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
+  <input type="file" id="folder" webkitdirectory multiple hidden>
+  <button class="tbtn icon" id="btnFolder" title="Abrir uma pasta inteira de fotos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/><path d="M12 12v5M9.5 14.5h5"/></svg></button>
+  <button class="tbtn icon" id="btnSave" title="Salvar projeto: fotos e medições, para continuar depois (Ctrl+S)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg></button>
+  <div id="photoNav" hidden>
+    <button class="tbtn icon" id="photoPrev" title="Foto anterior (PageUp)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg></button>
+    <select id="photoSel" title="Escolher foto"></select>
+    <button class="tbtn icon" id="photoNext" title="Próxima foto (PageDown)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 5 7 7-7 7"/></svg></button>
+  </div>
+  <button class="tbtn icon" id="btnUndo" title="Desfazer (Ctrl+Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+  <button class="tbtn icon" id="btnRedo" title="Refazer (Ctrl+Y)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
+  <div class="spacer"></div>
+  <div id="lookWrap">
+    <button class="tbtn" id="btnLook" aria-expanded="false" aria-controls="lookPanel" title="Espessura, tipo de linha, cores e legenda"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16" /><path d="M4 18h3M10 18h3M16 18h4"/></svg><span class="lbl">Aparência</span></button>
+    <div id="lookPanel" hidden>
+      <div class="lrow"><span>Espessura da linha</span><input type="range" id="lkWidth" min="1" max="8" step="0.5"><output id="lkWidthV"></output></div>
+      <div class="lrow"><span>Tipo de linha</span><div class="seg" id="lkDash"><button data-v="solid">Contínua</button><button data-v="dash">Tracejada</button><button data-v="dot">Pontilhada</button></div></div>
+      <div class="lrow"><span>Legenda</span><select id="lkLegend">
+        <option value="line">Junto de cada marcação</option>
+        <option value="tl">Canto superior esquerdo</option><option value="tr">Canto superior direito</option>
+        <option value="bl">Canto inferior esquerdo</option><option value="br">Canto inferior direito</option>
+        <option value="none">Sem legenda</option></select></div>
+      <label class="lrow chk" id="lkTagsRow"><input type="checkbox" id="lkTags"> Mostrar o nome (A1, C1…) junto da marcação</label>
+      <div class="lrow"><span>Tamanho do texto</span><input type="range" id="lkSize" min="9" max="24"><output id="lkSizeV"></output></div>
+      <div class="lrow"><span>Cor da marcação selecionada</span><div id="lkColors"></div></div>
+      <p class="lnote">Vale para a tela e para a imagem salva.</p>
+    </div>
+  </div>
+  <button id="scaleChip" title="Definir escala">Sem escala — resultados em pixels</button>
+  <label id="unitLbl"><span class="lbl">Resultados em</span> <select id="dispUnit" disabled><option>px</option></select></label>
+  <button class="tbtn icon" id="btnZoomOut" title="Diminuir zoom (−)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg></button>
+  <span id="zoomLbl">100%</span>
+  <button class="tbtn icon" id="btnZoomIn" title="Aumentar zoom (+)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14"/></svg></button>
+  <button class="tbtn" id="btnFit" title="Ajustar à janela (0)">Ajustar</button>
+  <button class="tbtn" id="btnInstall" hidden title="Instalar o MetricMod neste aparelho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg><span class="lbl">Instalar</span></button>
+  <button class="tbtn" id="btnRes" title="Ver resultados">Resultados <b id="resCount">0</b></button>
+</header>
+
+<nav id="tools" aria-label="Ferramentas"></nav>
+
+<main id="stage">
+  <div id="guide"></div>
+  <div id="canvasWrap">
+    <canvas id="cv"></canvas>
+    <div id="empty"><div class="box">
+      <h1>Abra uma foto para começar</h1>
+      <p>Arraste uma ou várias fotos para cá, cole com Ctrl+V ou use os botões abaixo. As fotos precisam ter um objeto de medida conhecida, como uma régua, para definir a escala.</p>
+      <button class="pbtn" id="btnOpen2">Abrir imagens</button> <button class="gbtn" id="btnFolder2">Abrir pasta</button>
+      <p class="small">Também abre projetos salvos (.metricmod) e TIFF de microscópio.</p>
+      <div id="resume" hidden><b>Continuar de onde parou?</b><span id="resumeTxt"></span><div><button class="pbtn" id="btnResume">Continuar</button> <button class="gbtn" id="btnDiscard">Começar do zero</button></div></div>
+    </div></div>
+    <div id="busy">Processando…</div>
+    <div id="toast"></div>
+  </div>
+</main>
+
+<aside id="results">
+  <div id="resHead"><h2>Resultados</h2><span id="resSub"></span><button class="tbtn" id="resClose">Fechar</button></div>
+  <div id="groupBar" hidden>
+    <label for="groupIn">Grupo das próximas medições</label>
+    <div class="grow"><input id="groupIn" list="groupList" placeholder="Sem grupo (digite, ex.: Tratamento A)" autocomplete="off"><datalist id="groupList"></datalist>
+    <button class="gbtn" id="groupAll" title="Coloca todas as medições desta foto no grupo escolhido">Aplicar à foto</button></div>
+  </div>
+  <div id="resBody"></div>
+  <div id="resFoot">
+    <button class="tbtn wide" id="btnCsv">Exportar para Excel (.csv)</button>
+    <button class="tbtn" id="btnCopy">Copiar tabela</button>
+    <button class="tbtn" id="btnPng">Salvar imagem marcada</button>
+  </div>
+</aside>
+<div id="updBar" hidden>Há uma versão nova do MetricMod. <button class="pbtn" id="btnUpd">Atualizar agora</button></div>
+<script>/* MetricMod — núcleo de cálculo.
+   Algoritmos seguem as convenções do ImageJ 1.54 (domínio público):
+   - pixel (x,y) ocupa o quadrado [x,x+1)×[y,y+1); polígono preenche pixels cujo centro está dentro (PolygonFiller)
+   - contorno traçado pelas bordas dos pixels, 8-conectado (Wand.traceEdge)
+   - perímetro traçado com correção de cantos (PolygonRoi.getTracedPerimeter)
+   - Feret máximo/mínimo sobre o fecho convexo (Roi.getFeretValues)
+   - limiar de Otsu (AutoThresholder.Otsu)
+   Máscaras: {x, y, w, h, data: Uint8Array(w*h)} em coordenadas da imagem. */
+(function (root) {
+  'use strict';
+  const MM = {};
+
+  /* ---------- Máscaras ---------- */
+  MM.newMask = (x, y, w, h) => ({ x, y, w, h, data: new Uint8Array(Math.max(0, w * h)) });
+
+  MM.maskCount = (m) => { let n = 0; const d = m.data; for (let i = 0; i < d.length; i++) n += d[i] ? 1 : 0; return n; };
+
+  // Garante que a máscara cubra o retângulo [x0,x1)×[y0,y1), limitado à imagem.
+  MM.ensureBounds = (m, x0, y0, x1, y1, W, H) => {
+    x0 = Math.max(0, Math.min(x0, m.x)); y0 = Math.max(0, Math.min(y0, m.y));
+    x1 = Math.min(W, Math.max(x1, m.x + m.w)); y1 = Math.min(H, Math.max(y1, m.y + m.h));
+    if (x0 === m.x && y0 === m.y && x1 === m.x + m.w && y1 === m.y + m.h) return m;
+    const n = MM.newMask(x0, y0, x1 - x0, y1 - y0);
+    for (let j = 0; j < m.h; j++) n.data.set(m.data.subarray(j * m.w, (j + 1) * m.w), (j + m.y - y0) * n.w + (m.x - x0));
+    return n;
+  };
+
+  // Recorta a máscara ao menor retângulo com pixels ligados.
+  MM.cropMask = (m) => {
+    let x0 = m.w, y0 = m.h, x1 = -1, y1 = -1;
+    for (let j = 0; j < m.h; j++) for (let i = 0; i < m.w; i++) if (m.data[j * m.w + i]) {
+      if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j;
+    }
+    if (x1 < 0) return MM.newMask(m.x, m.y, 0, 0);
+    const n = MM.newMask(m.x + x0, m.y + y0, x1 - x0 + 1, y1 - y0 + 1);
+    for (let j = 0; j < n.h; j++) n.data.set(m.data.subarray((j + y0) * m.w + x0, (j + y0) * m.w + x1 + 1), j * n.w);
+    return n;
+  };
+
+  MM.cloneMask = (m) => ({ x: m.x, y: m.y, w: m.w, h: m.h, data: m.data.slice() });
+
+  /* ---------- Rasterização de polígono (regra do centro do pixel) ---------- */
+  MM.rasterPolygon = (pts, W, H) => {
+    let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+    for (const p of pts) { minx = Math.min(minx, p[0]); maxx = Math.max(maxx, p[0]); miny = Math.min(miny, p[1]); maxy = Math.max(maxy, p[1]); }
+    const x0 = Math.max(0, Math.floor(minx)), y0 = Math.max(0, Math.floor(miny));
+    const x1 = Math.min(W, Math.ceil(maxx) + 1), y1 = Math.min(H, Math.ceil(maxy) + 1);
+    const m = MM.newMask(x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
+    const n = pts.length, xs = [];
+    for (let y = y0; y < y1; y++) {
+      const yc = y + 0.5; xs.length = 0;
+      for (let i = 0, j = n - 1; i < n; j = i++) {
+        const [xi, yi] = pts[i], [xj, yj] = pts[j];
+        if ((yi <= yc) !== (yj <= yc)) xs.push(xi + (yc - yi) * (xj - xi) / (yj - yi));
+      }
+      xs.sort((a, b) => a - b);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        // pixel x incluído se x+0.5 ∈ [xa, xb)
+        const a = Math.max(x0, Math.ceil(xs[k] - 0.5)), b = Math.min(x1, Math.ceil(xs[k + 1] - 0.5));
+        for (let x = a; x < b; x++) m.data[(y - y0) * m.w + (x - x0)] = 1;
+      }
+    }
+    return m;
+  };
+
+  // Combina 'src' em 'dst' (add=true liga, add=false apaga). Retorna nova máscara recortada.
+  MM.combine = (dst, src, add, W, H) => {
+    let m = add ? MM.ensureBounds(dst, src.x, src.y, src.x + src.w, src.y + src.h, W, H) : MM.cloneMask(dst);
+    for (let j = 0; j < src.h; j++) {
+      const yy = src.y + j - m.y; if (yy < 0 || yy >= m.h) continue;
+      for (let i = 0; i < src.w; i++) {
+        if (!src.data[j * src.w + i]) continue;
+        const xx = src.x + i - m.x; if (xx < 0 || xx >= m.w) continue;
+        m.data[yy * m.w + xx] = add ? 1 : 0;
+      }
+    }
+    return MM.cropMask(m);
+  };
+
+  // Pincel: segmento grosso de (ax,ay) até (bx,by) com raio r.
+  MM.strokeMask = (ax, ay, bx, by, r, W, H) => {
+    const x0 = Math.max(0, Math.floor(Math.min(ax, bx) - r)), y0 = Math.max(0, Math.floor(Math.min(ay, by) - r));
+    const x1 = Math.min(W, Math.ceil(Math.max(ax, bx) + r) + 1), y1 = Math.min(H, Math.ceil(Math.max(ay, by) + r) + 1);
+    const m = MM.newMask(x0, y0, Math.max(0, x1 - x0), Math.max(0, y1 - y0));
+    const dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy, r2 = r * r;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const px = x + 0.5, py = y + 0.5;
+      let t = L2 ? ((px - ax) * dx + (py - ay) * dy) / L2 : 0; t = Math.max(0, Math.min(1, t));
+      const ex = px - (ax + t * dx), ey = py - (ay + t * dy);
+      if (ex * ex + ey * ey <= r2) m.data[(y - y0) * m.w + (x - x0)] = 1;
+    }
+    return m;
+  };
+
+  /* ---------- Preenchimento de furos ---------- */
+  MM.fillHoles = (m) => {
+    const w = m.w + 2, h = m.h + 2, out = new Uint8Array(w * h), stack = [0];
+    const inM = (i, j) => i >= 1 && j >= 1 && i <= m.w && j <= m.h && m.data[(j - 1) * m.w + (i - 1)];
+    out[0] = 1;
+    while (stack.length) {
+      const p = stack.pop(), i = p % w, j = (p / w) | 0;
+      const nb = [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]];
+      for (const [a, b] of nb) {
+        if (a < 0 || b < 0 || a >= w || b >= h) continue;
+        const q = b * w + a; if (out[q] || inM(a, b)) continue;
+        out[q] = 1; stack.push(q);
+      }
+    }
+    const n = MM.cloneMask(m);
+    for (let j = 0; j < m.h; j++) for (let i = 0; i < m.w; i++) if (!out[(j + 1) * w + i + 1]) n.data[j * m.w + i] = 1;
+    return n;
+  };
+
+  /* ---------- Componentes conectados (8-conectado) ---------- */
+  MM.label = (bin, w, h) => {
+    const lab = new Int32Array(w * h), comps = []; let next = 0; const stack = [];
+    for (let s = 0; s < w * h; s++) {
+      if (!bin[s] || lab[s]) continue;
+      next++; let area = 0, x0 = w, y0 = h, x1 = 0, y1 = 0, edge = false;
+      lab[s] = next; stack.push(s);
+      while (stack.length) {
+        const p = stack.pop(), x = p % w, y = (p / w) | 0; area++;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+        if (x === 0 || y === 0 || x === w - 1 || y === h - 1) edge = true;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const a = x + dx, b = y + dy; if (a < 0 || b < 0 || a >= w || b >= h) continue;
+          const q = b * w + a; if (bin[q] && !lab[q]) { lab[q] = next; stack.push(q); }
+        }
+      }
+      comps.push({ label: next, area, x0, y0, x1, y1, edge, start: s });
+    }
+    return { lab, comps };
+  };
+
+  MM.maskFromLabel = (lab, w, c) => {
+    const m = MM.newMask(c.x0, c.y0, c.x1 - c.x0 + 1, c.y1 - c.y0 + 1);
+    for (let j = 0; j < m.h; j++) for (let i = 0; i < m.w; i++) if (lab[(j + c.y0) * w + i + c.x0] === c.label) m.data[j * m.w + i] = 1;
+    return m;
+  };
+
+  /* ---------- Contorno (porta do Wand.traceEdge, 8-conectado) ---------- */
+  // inside(x,y) testa o pixel; vértice (x,y) é o canto superior esquerdo do pixel (x,y).
+  MM.traceEdge = (inside, startX, startY) => {
+    const xs = [], ys = [];
+    const ins = (x, y, d) => {
+      switch (d & 3) { case 0: return inside(x, y); case 1: return inside(x, y - 1); case 2: return inside(x - 1, y - 1); default: return inside(x - 1, y); }
+    };
+    const startDirection = 1; let x = startX, y = startY, direction = startDirection, guard = 0;
+    do {
+      let nd = direction + 1;
+      do { if (ins(x, y, nd)) break; nd--; } while (nd >= direction);
+      if (nd !== direction) { xs.push(x); ys.push(y); }
+      switch (nd & 3) { case 0: x++; break; case 1: y--; break; case 2: x--; break; case 3: y++; break; }
+      direction = nd;
+      if (++guard > 1e7) break;
+    } while (x !== startX || y !== startY || (direction & 3) !== startDirection);
+    if (xs.length && xs[0] !== x) { xs.push(x); ys.push(y); }
+    return xs.map((v, i) => [v, ys[i]]);
+  };
+
+  // Contornos externos de todos os componentes da máscara, em coordenadas da imagem.
+  MM.outlines = (m) => {
+    const { lab, comps } = MM.label(m.data, m.w, m.h), res = [];
+    for (const c of comps) {
+      const inside = (x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h && lab[y * m.w + x] === c.label;
+      // ImageJ começa na borda esquerda do primeiro pixel (raster) do componente, subindo.
+      const sx = c.start % m.w, sy = (c.start / m.w) | 0;
+      const poly = MM.traceEdge(inside, sx, sy);
+      res.push({ poly: poly.map(([x, y]) => [x + m.x, y + m.y]), area: c.area });
+    }
+    return res;
+  };
+
+  MM.tracedPerimeter = (pts) => {
+    const n = pts.length; if (n < 4) return 0;
+    let sumdx = 0, sumdy = 0, nCorners = 0;
+    let dx1 = pts[0][0] - pts[n - 1][0], dy1 = pts[0][1] - pts[n - 1][1];
+    let side1 = Math.abs(dx1) + Math.abs(dy1), corner = false;
+    for (let i = 0; i < n; i++) {
+      const ni = (i + 1) % n, dx2 = pts[ni][0] - pts[i][0], dy2 = pts[ni][1] - pts[i][1];
+      sumdx += Math.abs(dx1); sumdy += Math.abs(dy1);
+      const side2 = Math.abs(dx2) + Math.abs(dy2);
+      if (side1 > 1 || !corner) { corner = true; nCorners++; } else corner = false;
+      dx1 = dx2; dy1 = dy2; side1 = side2;
+    }
+    return sumdx + sumdy - nCorners * (2 - Math.SQRT2);
+  };
+
+  // Comprimento de polígono/linha. smooth=true aplica média móvel de 3 pontos (como o ImageJ faz em traçado à mão livre).
+  MM.polyLength = (pts, closed, smooth) => {
+    let p = pts;
+    if (smooth && pts.length > 3) {
+      const n = pts.length; p = [];
+      for (let i = 0; i < n; i++) {
+        const a = pts[closed ? (i + n - 1) % n : Math.max(0, i - 1)], b = pts[i], c = pts[closed ? (i + 1) % n : Math.min(n - 1, i + 1)];
+        p.push([(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3]);
+      }
+    }
+    let L = 0; for (let i = 1; i < p.length; i++) L += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
+    if (closed && p.length > 2) L += Math.hypot(p[0][0] - p[p.length - 1][0], p[0][1] - p[p.length - 1][1]);
+    return L;
+  };
+
+  /* ---------- Fecho convexo e Feret ---------- */
+  MM.convexHull = (pts) => {
+    const p = pts.map((q) => [q[0], q[1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const u = []; for (let i = 0; i < p.length; i++) if (!i || p[i][0] !== p[i - 1][0] || p[i][1] !== p[i - 1][1]) u.push(p[i]);
+    if (u.length < 3) return u;
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lo = [], hi = [];
+    for (const q of u) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop(); lo.push(q); }
+    for (let i = u.length - 1; i >= 0; i--) { const q = u[i]; while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], q) <= 0) hi.pop(); hi.push(q); }
+    hi.pop(); lo.pop(); return lo.concat(hi);
+  };
+
+  // Retorna diâmetros em pixels + extremidades para desenhar.
+  MM.feret = (hull) => {
+    const n = hull.length;
+    if (n === 0) return { max: 0, min: 0, angle: 0, maxLine: null, minLine: null };
+    let d2 = 0, p1 = 0, p2 = 0;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const dx = hull[i][0] - hull[j][0], dy = hull[i][1] - hull[j][1], s = dx * dx + dy * dy;
+      if (s > d2) { d2 = s; p1 = i; p2 = j; }
+    }
+    if (hull[p1][0] > hull[p2][0]) [p1, p2] = [p2, p1];
+    let angle = Math.atan2(hull[p1][1] - hull[p2][1], hull[p2][0] - hull[p1][0]) * 180 / Math.PI; if (angle < 0) angle += 180;
+    let min = n < 3 ? 0 : Infinity, minLine = null;
+    if (n >= 3) {
+      // casco no sentido anti-horário matemático (y para baixo => horário na tela); usar |dist|
+      for (let i = 0; i < n; i++) {
+        const a = hull[(i + n - 1) % n], b = hull[i];
+        let nx = b[1] - a[1], ny = a[0] - b[0]; const L = Math.hypot(nx, ny); if (!L) continue; nx /= L; ny /= L;
+        let md = 0, mp = null;
+        for (let j = 0; j < n; j++) { const d = Math.abs((hull[j][0] - b[0]) * nx + (hull[j][1] - b[1]) * ny); if (d > md) { md = d; mp = hull[j]; } }
+        if (md < min) {
+          min = md;
+          const s = (mp[0] - b[0]) * nx + (mp[1] - b[1]) * ny;
+          minLine = [mp[0], mp[1], mp[0] - nx * s, mp[1] - ny * s];
+        }
+      }
+    }
+    return { max: Math.sqrt(d2), min, angle, maxLine: [hull[p1][0], hull[p1][1], hull[p2][0], hull[p2][1]], minLine };
+  };
+
+  /* ---------- Medição de uma máscara ---------- */
+  // rgba: Uint8ClampedArray da imagem W×H. Retorna valores em pixels.
+  MM.measureMask = (m, rgba, W) => {
+    let n = 0, sr = 0, sg = 0, sb = 0, cx = 0, cy = 0;
+    for (let j = 0; j < m.h; j++) for (let i = 0; i < m.w; i++) {
+      if (!m.data[j * m.w + i]) continue;
+      const x = m.x + i, y = m.y + j, k = (y * W + x) * 4; n++;
+      if (rgba) { sr += rgba[k]; sg += rgba[k + 1]; sb += rgba[k + 2]; }
+      cx += x + 0.5; cy += y + 0.5;
+    }
+    const outs = MM.outlines(m);
+    let perim = 0; const all = [];
+    for (const o of outs) { perim += MM.tracedPerimeter(o.poly); for (const p of o.poly) all.push(p); }
+    const hull = MM.convexHull(all), f = MM.feret(hull);
+    const circ = perim > 0 ? Math.min(1, 4 * Math.PI * n / (perim * perim)) : 0;
+    return {
+      area: n, perimeter: perim, feret: f.max, minFeret: f.min, feretAngle: f.angle, maxLine: f.maxLine, minLine: f.minLine,
+      circularity: circ, centroid: n ? [cx / n, cy / n] : [0, 0], mean: n ? [sr / n, sg / n, sb / n] : [0, 0, 0],
+      outlines: outs.map((o) => o.poly), parts: outs.length,
+    };
+  };
+
+  /* ---------- Limiar ---------- */
+  MM.otsu = (hist) => {
+    let N = 0; for (const v of hist) N += v; if (!N) return 0;
+    const L = hist.length, cnh = new Float64Array(L), mean = new Float64Array(L);
+    cnh[0] = hist[0] / N;
+    for (let i = 1; i < L; i++) { cnh[i] = cnh[i - 1] + hist[i] / N; mean[i] = mean[i - 1] + i * hist[i] / N; }
+    const tm = mean[L - 1]; let best = 0, t = 0;
+    for (let i = 0; i < L; i++) { let b = tm * cnh[i] - mean[i]; b *= b / (cnh[i] * (1 - cnh[i])); if (best < b) { best = b; t = i; } }
+    return t;
+  };
+
+  // Imagem de "diferença do fundo": distância de cor de cada pixel à cor do fundo
+  // (mediana dos pixels da borda). Funciona para objeto escuro em fundo claro e vice-versa.
+  MM.backgroundDistance = (rgba, W, H) => {
+    const br = [], bg = [], bb = [];
+    const push = (x, y) => { const k = (y * W + x) * 4; br.push(rgba[k]); bg.push(rgba[k + 1]); bb.push(rgba[k + 2]); };
+    const step = Math.max(1, Math.floor((W + H) / 2000));
+    for (let x = 0; x < W; x += step) { push(x, 0); push(x, H - 1); }
+    for (let y = 0; y < H; y += step) { push(0, y); push(W - 1, y); }
+    const med = (a) => { a.sort((p, q) => p - q); return a[a.length >> 1]; };
+    const bc = [med(br), med(bg), med(bb)];
+    const dist = new Float32Array(W * H); let mx = 0;
+    for (let i = 0, k = 0; i < W * H; i++, k += 4) {
+      const dr = rgba[k] - bc[0], dg = rgba[k + 1] - bc[1], db = rgba[k + 2] - bc[2];
+      const d = Math.sqrt(dr * dr + dg * dg + db * db); dist[i] = d; if (d > mx) mx = d;
+    }
+    const out = new Uint8Array(W * H), hist = new Array(256).fill(0), s = mx > 0 ? 255 / mx : 0;
+    for (let i = 0; i < W * H; i++) { const v = Math.round(dist[i] * s); out[i] = v; hist[v]++; }
+    return { img: out, hist, bgColor: bc, threshold: MM.otsu(hist) };
+  };
+
+  // Detecta todos os objetos: limiar sobre a imagem de diferença do fundo.
+  MM.detectAll = (det, W, H, opts) => {
+    const t = opts.threshold, minArea = opts.minArea || 1;
+    let bin = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) bin[i] = det.img[i] > t ? 1 : 0;
+    // separa objetos encostados sobre a máscara sem preencher furos (como o Watershed do ImageJ):
+    // os vãos entre objetos encostados ajudam a achar a divisão; furos de cada objeto são preenchidos depois
+    if (opts.split) bin = MM.splitTouching(bin, W, H, opts.splitTol || 1);
+    let lab, comps;
+    if (opts.grad) { // bordas refinadas pelo gradiente
+      const rf = MM.refineDetect(opts.grad, W, H, bin, opts.erode || 2, opts.band || Math.max(8, Math.round(Math.max(W, H) * 0.03))); lab = rf.lab;
+      for (let i = 0; i < W * H; i++) if (lab[i] === rf.BG) lab[i] = 0;
+      const b2 = new Uint8Array(W * H); for (let i = 0; i < W * H; i++) b2[i] = lab[i] ? 1 : 0;
+      // componentes por rótulo do watershed (objetos encostados ficam separados se os núcleos forem distintos)
+      comps = []; const bb = new Map();
+      for (let i = 0; i < W * H; i++) { const L = lab[i]; if (!L) continue; const x = i % W, y = (i / W) | 0; let c = bb.get(L);
+        if (!c) { c = { label: L, area: 0, x0: x, y0: y, x1: x, y1: y, edge: false }; bb.set(L, c); comps.push(c); }
+        c.area++; if (x < c.x0) c.x0 = x; if (x > c.x1) c.x1 = x; if (y > c.y1) c.y1 = y; if (x === 0 || y === 0 || x === W - 1 || y === H - 1) c.edge = true; }
+    } else ({ lab, comps } = MM.label(bin, W, H));
+    const masks = [];
+    for (const c of comps) {
+      if (c.area < minArea) continue;
+      if (opts.excludeEdges && c.edge) continue;
+      let m = MM.maskFromLabel(lab, W, c);
+      if (opts.fillHoles) m = MM.fillHoles(m);
+      masks.push(m);
+    }
+    return masks;
+  };
+
+  // Detecta o objeto sob o clique (componente que contém o pixel).
+  MM.detectAt = (det, W, H, px, py, opts) => {
+    const t = opts.threshold, seedObj = det.img[py * W + px] > t;
+    if (!seedObj) return null;
+    const vis = new Uint8Array(W * H), stack = [py * W + px]; vis[py * W + px] = 1;
+    let x0 = px, y0 = py, x1 = px, y1 = py; const pix = [];
+    while (stack.length) {
+      const p = stack.pop(), x = p % W, y = (p / W) | 0; pix.push(p);
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const a = x + dx, b = y + dy; if (a < 0 || b < 0 || a >= W || b >= H) continue;
+        const q = b * W + a; if (!vis[q] && det.img[q] > t) { vis[q] = 1; stack.push(q); }
+      }
+    }
+    let m = MM.newMask(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    for (const p of pix) m.data[((p / W) | 0) * m.w - y0 * m.w + (p % W) - x0] = 1;
+    if (opts.fillHoles) m = MM.fillHoles(m);
+    return m;
+  };
+
+  /* ---------- Bordas: gradiente de cor ---------- */
+  // Suaviza (caixa 3×3) e calcula Sobel por canal; usa o maior canal.
+  // Resultado normalizado para 0..255 (percentil 99,5 = 255).
+  MM.gradient = (rgba, W, H) => {
+    const N = W * H, ch = [new Float32Array(N), new Float32Array(N), new Float32Array(N)];
+    for (let i = 0, k = 0; i < N; i++, k += 4) { ch[0][i] = rgba[k]; ch[1][i] = rgba[k + 1]; ch[2][i] = rgba[k + 2]; }
+    const tmp = new Float32Array(N);
+    const box = (a) => {
+      for (let y = 0; y < H; y++) { const o = y * W; for (let x = 0; x < W; x++) { const l = x ? x - 1 : 0, r = x < W - 1 ? x + 1 : x; tmp[o + x] = (a[o + l] + a[o + x] + a[o + r]) / 3; } }
+      for (let y = 0; y < H; y++) { const u = (y ? y - 1 : 0) * W, d = (y < H - 1 ? y + 1 : y) * W, o = y * W; for (let x = 0; x < W; x++) a[o + x] = (tmp[u + x] + tmp[o + x] + tmp[d + x]) / 3; }
+    };
+    for (const a of ch) box(a);
+    const g = new Float32Array(N);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x; let best = 0;
+      for (const a of ch) {
+        const gx = a[i - W + 1] + 2 * a[i + 1] + a[i + W + 1] - a[i - W - 1] - 2 * a[i - 1] - a[i + W - 1];
+        const gy = a[i + W - 1] + 2 * a[i + W] + a[i + W + 1] - a[i - W - 1] - 2 * a[i - W] - a[i - W + 1];
+        const m = gx * gx + gy * gy; if (m > best) best = m;
+      }
+      g[i] = Math.sqrt(best);
+    }
+    // escala com raiz quadrada sobre o máximo: bordas fortes não saturam (sem platôs) e bordas fracas mantêm resolução
+    let mx = 0; for (let i = 0; i < N; i++) if (g[i] > mx) mx = g[i];
+    const out = new Uint8Array(N), s = mx > 0 ? 1 / mx : 0;
+    for (let i = 0; i < N; i++) out[i] = Math.round(255 * Math.sqrt(g[i] * s));
+    return out;
+  };
+
+  /* ---------- Watershed com marcadores (inundação por níveis) ---------- */
+  // grad: Uint8Array; lab: Int32Array com marcadores (>0) e 0 = desconhecido. Preenche lab in-place.
+  MM.watershed = (grad, W, H, lab) => {
+    const N = W * H, inQ = new Uint8Array(N), B = []; for (let i = 0; i < 256; i++) B.push([]);
+    const push = (q, lvl) => { inQ[q] = 1; B[lvl].push(q); };
+    for (let p = 0; p < N; p++) {
+      if (!lab[p]) continue; const x = p % W;
+      if (x > 0 && !lab[p - 1] && !inQ[p - 1]) push(p - 1, grad[p - 1]);
+      if (x < W - 1 && !lab[p + 1] && !inQ[p + 1]) push(p + 1, grad[p + 1]);
+      if (p >= W && !lab[p - W] && !inQ[p - W]) push(p - W, grad[p - W]);
+      if (p < N - W && !lab[p + W] && !inQ[p + W]) push(p + W, grad[p + W]);
+    }
+    for (let lvl = 0; lvl < 256; lvl++) {
+      const b = B[lvl];
+      for (let qi = 0; qi < b.length; qi++) {
+        const p = b[qi], x = p % W; let L = 0;
+        if (x > 0 && lab[p - 1]) L = lab[p - 1]; else if (x < W - 1 && lab[p + 1]) L = lab[p + 1]; else if (p >= W && lab[p - W]) L = lab[p - W]; else if (p < N - W && lab[p + W]) L = lab[p + W];
+        lab[p] = L;
+        const nb = (q) => { if (!lab[q] && !inQ[q]) push(q, grad[q] > lvl ? grad[q] : lvl); };
+        if (x > 0) nb(p - 1); if (x < W - 1) nb(p + 1); if (p >= W) nb(p - W); if (p < N - W) nb(p + W);
+      }
+      B[lvl] = null;
+    }
+    return lab;
+  };
+
+  // Desenha marcadores (traços com raio r) num Int32Array de uma janela.
+  const stampStrokes = (lab, w, h, ox, oy, strokes, r, val) => {
+    for (const s of strokes) {
+      const pts = s.length === 1 ? [s[0], s[0]] : s;
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, ay] = pts[i - 1], [bx, by] = pts[i], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay)));
+        for (let t = 0; t <= n; t++) {
+          const cx = ax + (bx - ax) * t / n - ox, cy = ay + (by - ay) * t / n - oy;
+          for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+            if (dx * dx + dy * dy > r * r) continue; const x = Math.floor(cx + dx), y = Math.floor(cy + dy);
+            if (x >= 0 && y >= 0 && x < w && y < h) lab[y * w + x] = val;
+          }
+        }
+      }
+    }
+  };
+
+  // Segmenta um objeto a partir de marcas. A região cresce a partir das marcas de objeto,
+  // absorvendo primeiro os pixels de borda mais fraca (inundação mínimo-máxima). A área A(L)
+  // em função do nível de borda L tem um salto enorme quando a região "vaza" pela borda do objeto;
+  // o contorno é a região logo antes do maior salto relativo. Marcas de fundo limitam L por cima
+  // (o fundo nunca entra) e marcas extras de objeto limitam por baixo (precisam estar dentro).
+  MM.segmentSeeds = (grad, W, H, fg, bg, opts = {}) => {
+    const N = W * H, lev = new Uint8Array(N).fill(255), seen = new Uint8Array(N), B = []; for (let i = 0; i < 256; i++) B.push([]);
+    const fgL = new Int32Array(N), bgL = new Int32Array(N);
+    stampStrokes(fgL, W, H, 0, 0, fg, opts.r || 2, 1); stampStrokes(bgL, W, H, 0, 0, bg, opts.r || 2, 1);
+    const hist = new Float64Array(256); let bgLevel = 256, fgTotal = 0, fgSeen = 0, fgLevel = 0;
+    for (let p = 0; p < N; p++) if (fgL[p]) fgTotal++;
+    // semente = primeiro traço de objeto
+    const first = new Int32Array(N); stampStrokes(first, W, H, 0, 0, [fg[0]], opts.r || 2, 1);
+    for (let p = 0; p < N; p++) if (first[p] && !bgL[p]) { seen[p] = 1; B[0].push(p); }
+    for (let L = 0; L < 256; L++) {
+      const b = B[L];
+      for (let qi = 0; qi < b.length; qi++) {
+        const p = b[qi]; lev[p] = L; hist[L]++;
+        if (bgL[p] && L < bgLevel) bgLevel = L;
+        if (fgL[p]) { fgSeen++; if (fgSeen === fgTotal) fgLevel = L; }
+        const x = p % W;
+        const nb = (q) => { if (seen[q]) return; seen[q] = 1; const g = grad[q] > L ? grad[q] : L; B[g].push(q); };
+        if (x > 0) nb(p - 1); if (x < W - 1) nb(p + 1); if (p >= W) nb(p - W); if (p < N - W) nb(p + W);
+      }
+      B[L] = null;
+    }
+    const A = new Float64Array(256); let acc = 0; for (let L = 0; L < 256; L++) { acc += hist[L]; A[L] = acc; }
+    const minA = opts.minArea || 9, lo = fgLevel, hi = Math.min(254, bgLevel - 1);
+    // escolhe o nível com região estável (área quase constante por vários níveis) seguida de um salto grande
+    let best = -1, bestS = 0, bestR = 0;
+    for (let L = lo; L <= hi; L++) {
+      if (A[L] < minA) continue; const r = A[L + 1] / A[L]; if (r < 1.3) continue;
+      let l = L; while (l > 0 && A[l - 1] >= 0.85 * A[L]) l--;
+      const sc = (L - l + 1) * Math.log(r);
+      if (sc > bestS) { bestS = sc; best = L; bestR = r; }
+    }
+    if (best < 0) best = Math.max(lo, Math.min(hi, 254));
+    let x0 = W, y0 = H, x1 = -1, y1 = -1;
+    for (let p = 0; p < N; p++) if (seen[p] && lev[p] <= best) { const x = p % W, y = (p / W) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 < 0) return MM.newMask(0, 0, 0, 0);
+    // borda exata: watershed numa faixa de ±3 px em volta da região divide a crista do gradiente
+    const R = 4, wx0 = Math.max(0, x0 - R), wy0 = Math.max(0, y0 - R), wx1 = Math.min(W, x1 + R + 1), wy1 = Math.min(H, y1 + R + 1);
+    const w = wx1 - wx0, h = wy1 - wy0, inR = new Uint8Array(w * h);
+    for (let y = wy0; y < wy1; y++) for (let x = wx0; x < wx1; x++) { const p = y * W + x; if (seen[p] && lev[p] <= best) inR[(y - wy0) * w + x - wx0] = 1; }
+    const dIn = MM.distanceTo(inR, w, h, 0), dOut = MM.distanceTo(inR, w, h, 1), lab = new Int32Array(w * h), g = new Uint8Array(w * h);
+    for (let i = 0; i < w * h; i++) lab[i] = inR[i] ? (dIn[i] > 1.5 ? 1 : 0) : (dOut[i] > 2.5 ? 2 : 0);
+    for (let j = 0; j < h; j++) g.set(grad.subarray((j + wy0) * W + wx0, (j + wy0) * W + wx1), j * w);
+    for (let i = 0; i < w * h; i++) if (bgL[(((i / w) | 0) + wy0) * W + (i % w) + wx0]) lab[i] = 2;
+    MM.watershed(g, w, h, lab);
+    let m = MM.newMask(wx0, wy0, w, h);
+    for (let i = 0; i < w * h; i++) m.data[i] = lab[i] === 1 ? 1 : 0;
+    m = MM.cropMask(m);
+    if (opts.fillHoles) m = MM.fillHoles(m);
+    return m;
+  };
+
+  // Distância (chanfro 3-4 ≈ euclidiana/3) até o pixel mais próximo com bin==val.
+  MM.distanceTo = (bin, W, H, val) => {
+    const N = W * H, d = new Float32Array(N), BIG = 1e9;
+    for (let i = 0; i < N; i++) d[i] = bin[i] === val ? 0 : BIG;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const i = y * W + x; let v = d[i]; if (!v) continue;
+      if (x > 0) v = Math.min(v, d[i - 1] + 3); if (y > 0) { v = Math.min(v, d[i - W] + 3); if (x > 0) v = Math.min(v, d[i - W - 1] + 4); if (x < W - 1) v = Math.min(v, d[i - W + 1] + 4); } d[i] = v; }
+    for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) { const i = y * W + x; let v = d[i]; if (!v) continue;
+      if (x < W - 1) v = Math.min(v, d[i + 1] + 3); if (y < H - 1) { v = Math.min(v, d[i + W] + 3); if (x < W - 1) v = Math.min(v, d[i + W + 1] + 4); if (x > 0) v = Math.min(v, d[i + W - 1] + 4); } d[i] = v; }
+    for (let i = 0; i < N; i++) d[i] /= 3;
+    return d;
+  };
+
+  // Refina objetos de um limiar: núcleos (erodidos) viram marcadores de objeto e só o fundo
+  // distante (> band px) vira marcador de fundo; o watershed põe a borda onde o gradiente é máximo,
+  // recuperando partes do objeto parecidas com o fundo que o limiar perdeu.
+  MM.refineDetect = (grad, W, H, bin, r, band) => {
+    const N = W * H, din = MM.distanceTo(bin, W, H, 0), dout = MM.distanceTo(bin, W, H, 1);
+    const core = new Uint8Array(N); for (let i = 0; i < N; i++) core[i] = din[i] > r ? 1 : 0;
+    const { lab: cl, comps } = MM.label(core, W, H);
+    const BG = comps.length + 1, lab = new Int32Array(N);
+    for (let i = 0; i < N; i++) lab[i] = cl[i] ? cl[i] : (dout[i] > band ? BG : 0);
+    MM.watershed(grad, W, H, lab);
+    return { lab, BG, n: comps.length };
+  };
+
+  /* ---------- Contorno magnético (livewire / tesoura inteligente) ---------- */
+  // Dijkstra numa janela em torno da âncora; custo baixo sobre bordas fortes.
+  MM.liveWire = (grad, W, H, ax, ay, R) => {
+    const x0 = Math.max(0, ax - R), y0 = Math.max(0, ay - R), x1 = Math.min(W - 1, ax + R), y1 = Math.min(H - 1, ay + R);
+    const w = x1 - x0 + 1, h = y1 - y0 + 1, n = w * h;
+    const dist = new Float32Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n);
+    const cost = (i) => { const gx = grad[(((i / w) | 0) + y0) * W + (i % w) + x0]; return 1 - gx / 256 * 0.97; };
+    // heap binário
+    const hk = new Float32Array(n * 4 + 8), hv = new Int32Array(n * 4 + 8); let hs = 0;
+    const hpush = (key, v) => { let i = hs++; hk[i] = key; hv[i] = v; while (i) { const p = (i - 1) >> 1; if (hk[p] <= hk[i]) break; [hk[p], hk[i]] = [hk[i], hk[p]]; [hv[p], hv[i]] = [hv[i], hv[p]]; i = p; } };
+    const hpop = () => { const v = hv[0]; hs--; hk[0] = hk[hs]; hv[0] = hv[hs]; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < hs && hk[l] < hk[m]) m = l; if (r < hs && hk[r] < hk[m]) m = r; if (m === i) break; [hk[m], hk[i]] = [hk[i], hk[m]]; [hv[m], hv[i]] = [hv[i], hv[m]]; i = m; } return v; };
+    const s = (ay - y0) * w + (ax - x0); dist[s] = 0; hpush(0, s);
+    while (hs) {
+      const p = hpop(); if (done[p]) continue; done[p] = 1; const px = p % w, py = (p / w) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const qx = px + dx, qy = py + dy; if (qx < 0 || qy < 0 || qx >= w || qy >= h) continue;
+        const q = qy * w + qx; if (done[q]) continue;
+        const d = dist[p] + cost(q) * (dx && dy ? Math.SQRT2 : 1);
+        if (d < dist[q] && hs < hk.length - 1) { dist[q] = d; prev[q] = p; hpush(d, q); }
+      }
+    }
+    return {
+      x0, y0, w, h,
+      path(tx, ty) { // caminho da âncora até (tx,ty), em centros de pixel
+        tx = Math.round(tx); ty = Math.round(ty);
+        if (tx < x0 || ty < y0 || tx > x1 || ty > y1) return null;
+        const out = []; let q = (ty - y0) * w + (tx - x0), guard = 0;
+        while (q >= 0 && guard++ < n) { out.push([(q % w) + x0 + 0.5, ((q / w) | 0) + y0 + 0.5]); q = prev[q]; }
+        return out.reverse();
+      },
+    };
+  };
+  // Procura o pixel de maior gradiente perto de (x,y) — ajuda a colocar a âncora na borda.
+  MM.snapEdge = (grad, W, H, x, y, r) => {
+    let bx = Math.round(x), by = Math.round(y), bv = -1;
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      const xx = Math.round(x) + dx, yy = Math.round(y) + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+      const v = grad[yy * W + xx] - 0.5 * Math.hypot(dx, dy); if (v > bv) { bv = v; bx = xx; by = yy; }
+    }
+    return [bx, by];
+  };
+
+  /* ---------- Perspectiva (homografia) ---------- */
+  // H tal que [x',y',w]ᵀ = H·[x,y,1]ᵀ leva src[i] → dst[i] (4 pares).
+  MM.homography = (src, dst) => {
+    const A = [];
+    for (let i = 0; i < 4; i++) {
+      const [x, y] = src[i], [u, v] = dst[i];
+      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]);
+      A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]);
+    }
+    for (let c = 0; c < 8; c++) { // eliminação de Gauss com pivoteamento
+      let p = c; for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      [A[c], A[p]] = [A[p], A[c]]; const d = A[c][c]; if (Math.abs(d) < 1e-12) return null;
+      for (let k = c; k < 9; k++) A[c][k] /= d;
+      for (let r = 0; r < 8; r++) if (r !== c) { const f = A[r][c]; if (f) for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k]; }
+    }
+    const h = A.map((r) => r[8]); return [h[0], h[1], h[2], h[3], h[4], h[5], h[6], h[7], 1];
+  };
+  MM.applyH = (H, x, y) => { const w = H[6] * x + H[7] * y + H[8]; return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w]; };
+  // Ordena 4 pontos: sup. esquerdo, sup. direito, inf. direito, inf. esquerdo.
+  MM.orderQuad = (pts) => {
+    const c = pts.reduce((a, p) => [a[0] + p[0] / 4, a[1] + p[1] / 4], [0, 0]);
+    const s = pts.slice().sort((a, b) => Math.atan2(a[1] - c[1], a[0] - c[0]) - Math.atan2(b[1] - c[1], b[0] - c[0]));
+    let k = 0; for (let i = 1; i < 4; i++) if (s[i][0] + s[i][1] < s[k][0] + s[k][1]) k = i;
+    return [0, 1, 2, 3].map((i) => s[(k + i) % 4]);
+  };
+  // Endireita a imagem: o quadrilátero 'quad' (ordenado) vira um retângulo realW×realH.
+  // Retorna {rgba, W, H, ppu, rect:[x0,y0,x1,y1]} com ppu = pixels por unidade.
+  MM.rectify = (rgba, W, H, quad, realW, realH, maxPixels) => {
+    const e = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const ppu = Math.max((e(quad[0], quad[1]) + e(quad[3], quad[2])) / 2 / realW, (e(quad[0], quad[3]) + e(quad[1], quad[2])) / 2 / realH);
+    const rw = realW * ppu, rh = realH * ppu, rect = [[0, 0], [rw, 0], [rw, rh], [0, rh]];
+    const Hf = MM.homography(quad, rect), Hi = MM.homography(rect, quad); if (!Hf || !Hi) return null;
+    // extensão da imagem inteira no plano corrigido, limitada a 3× o lado maior do retângulo além dele
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    for (const [x, y] of [[0, 0], [W, 0], [W, H], [0, H]]) { const [u, v] = MM.applyH(Hf, x, y); bx0 = Math.min(bx0, u); by0 = Math.min(by0, v); bx1 = Math.max(bx1, u); by1 = Math.max(by1, v); }
+    const Lm = Math.max(rw, rh) * 3; bx0 = Math.max(bx0, -Lm); by0 = Math.max(by0, -Lm); bx1 = Math.min(bx1, rw + Lm); by1 = Math.min(by1, rh + Lm);
+    let s = 1; const area = (bx1 - bx0) * (by1 - by0), lim = maxPixels || W * H * 1.5; if (area > lim) s = Math.sqrt(lim / area);
+    const oW = Math.max(1, Math.round((bx1 - bx0) * s)), oH = Math.max(1, Math.round((by1 - by0) * s)), out = new Uint8ClampedArray(oW * oH * 4);
+    for (let j = 0; j < oH; j++) for (let i = 0; i < oW; i++) {
+      const u = (i + 0.5) / s + bx0, v = (j + 0.5) / s + by0, w = Hi[6] * u + Hi[7] * v + Hi[8];
+      const x = (Hi[0] * u + Hi[1] * v + Hi[2]) / w - 0.5, y = (Hi[3] * u + Hi[4] * v + Hi[5]) / w - 0.5, o = (j * oW + i) * 4;
+      if (x < -0.5 || y < -0.5 || x > W - 0.5 || y > H - 0.5) { out[o] = out[o + 1] = out[o + 2] = 0; out[o + 3] = 255; continue; }
+      const x0 = Math.max(0, Math.min(W - 1, Math.floor(x))), y0 = Math.max(0, Math.min(H - 1, Math.floor(y))), x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+      const fx = Math.max(0, Math.min(1, x - x0)), fy = Math.max(0, Math.min(1, y - y0));
+      for (let c = 0; c < 3; c++) {
+        const a = rgba[(y0 * W + x0) * 4 + c], b = rgba[(y0 * W + x1) * 4 + c], d = rgba[(y1 * W + x0) * 4 + c], f = rgba[(y1 * W + x1) * 4 + c];
+        out[o + c] = (a * (1 - fx) + b * fx) * (1 - fy) + (d * (1 - fx) + f * fx) * fy;
+      }
+      out[o + 3] = 255;
+    }
+    return { rgba: out, W: oW, H: oH, ppu: ppu * s, rect: [-bx0 * s, -by0 * s, (rw - bx0) * s, (rh - by0) * s] };
+  };
+
+  /* ---------- Cor (CIE Lab) ---------- */
+  let LAB = null; // tabela para cores com 5 bits por canal
+  MM.labLUT = () => {
+    if (LAB) return LAB; LAB = new Float32Array(32768 * 3);
+    const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const f = (t) => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+    for (let i = 0; i < 32768; i++) {
+      const r = lin(((i >> 10) & 31) * 255 / 31), g = lin(((i >> 5) & 31) * 255 / 31), b = lin((i & 31) * 255 / 31);
+      const X = (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047, Y = 0.2126 * r + 0.7152 * g + 0.0722 * b, Z = (0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883;
+      const fx = f(X), fy = f(Y), fz = f(Z); LAB[i * 3] = 116 * fy - 16; LAB[i * 3 + 1] = 500 * (fx - fy); LAB[i * 3 + 2] = 200 * (fy - fz);
+    }
+    return LAB;
+  };
+  MM.rgbToLab = (r, g, b) => { const L = MM.labLUT(), i = ((r >> 3) << 10 | (g >> 3) << 5 | (b >> 3)) * 3; return [L[i], L[i + 1], L[i + 2]]; };
+  // Média 3×3 da imagem (reduz ruído antes de comparar cores).
+  MM.blurRGBA = (rgba, W, H) => {
+    const out = new Uint8ClampedArray(rgba.length);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= H) continue; for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 0 || xx >= W) continue; const k = (yy * W + xx) * 4; r += rgba[k]; g += rgba[k + 1]; b += rgba[k + 2]; n++; } }
+      const o = (y * W + x) * 4; out[o] = r / n; out[o + 1] = g / n; out[o + 2] = b / n; out[o + 3] = 255;
+    }
+    return out;
+  };
+
+  /* ---------- Colônias: aprende com exemplos e encontra as parecidas ---------- */
+  // Modelo de um exemplo: cor média (Lab), espalhamento de cor, área e circularidade.
+  MM.colonyModel = (rgbaB, W, mask, H) => {
+    const T = MM.labLUT(), labs = [];
+    for (let j = 0; j < mask.h; j++) for (let i = 0; i < mask.w; i++) if (mask.data[j * mask.w + i]) {
+      const k = ((j + mask.y) * W + i + mask.x) * 4, q = ((rgbaB[k] >> 3) << 10 | (rgbaB[k + 1] >> 3) << 5 | (rgbaB[k + 2] >> 3)) * 3;
+      labs.push([T[q], T[q + 1], T[q + 2]]);
+    }
+    const n = labs.length || 1, mean = [0, 1, 2].map((c) => labs.reduce((a, l) => a + l[c], 0) / n);
+    const d = labs.map((l) => Math.hypot(l[0] - mean[0], l[1] - mean[1], l[2] - mean[2])).sort((a, b) => a - b);
+    const m = MM.measureMask(mask, null, W);
+    // cor do fundo: anel de 3 a 8 px em volta do exemplo
+    let bgm = null;
+    if (H) {
+      const R = 8, x0 = Math.max(0, mask.x - R), y0 = Math.max(0, mask.y - R), x1 = Math.min(W, mask.x + mask.w + R), y1 = Math.min(H, mask.y + mask.h + R);
+      const w = x1 - x0, h = y1 - y0, inn = new Uint8Array(w * h);
+      for (let j = 0; j < mask.h; j++) for (let i = 0; i < mask.w; i++) if (mask.data[j * mask.w + i]) inn[(j + mask.y - y0) * w + i + mask.x - x0] = 1;
+      const dd = MM.distanceTo(inn, w, h, 1), acc = [0, 0, 0]; let n2 = 0;
+      for (let i = 0; i < w * h; i++) if (dd[i] >= 3 && dd[i] <= 8) {
+        const k = ((((i / w) | 0) + y0) * W + (i % w) + x0) * 4, q = ((rgbaB[k] >> 3) << 10 | (rgbaB[k + 1] >> 3) << 5 | (rgbaB[k + 2] >> 3)) * 3;
+        acc[0] += T[q]; acc[1] += T[q + 1]; acc[2] += T[q + 2]; n2++;
+      }
+      if (n2) bgm = acc.map((v) => v / n2);
+    }
+    return { mean, bg: bgm, spread: (d[Math.floor(d.length * 0.9)] || 0) + 4, area: m.area, circ: m.circularity };
+  };
+  // opts: tol (×espalhamento), minF/maxF (faixa de tamanho em relação ao exemplo), circTol, clusters, roi {cx,cy,rx,ry}
+  MM.findColonies = (rgbaB, W, H, models, opts) => {
+    const T = MM.labLUT(), N = W * H, bin = new Uint8Array(N), roi = opts.roi;
+    let x0 = 0, y0 = 0, x1 = W, y1 = H;
+    if (roi) { x0 = Math.max(0, Math.floor(roi.cx - roi.rx)); x1 = Math.min(W, Math.ceil(roi.cx + roi.rx)); y0 = Math.max(0, Math.floor(roi.cy - roi.ry)); y1 = Math.min(H, Math.ceil(roi.cy + roi.ry)); }
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      if (roi) { const u = (x + 0.5 - roi.cx) / roi.rx, v = (y + 0.5 - roi.cy) / roi.ry; if (u * u + v * v > 1) continue; }
+      const k = (y * W + x) * 4, q = ((rgbaB[k] >> 3) << 10 | (rgbaB[k + 1] >> 3) << 5 | (rgbaB[k + 2] >> 3)) * 3;
+      for (const m of models) {
+        const dc = Math.hypot(T[q] - m.mean[0], T[q + 1] - m.mean[1], T[q + 2] - m.mean[2]);
+        if (dc > m.spread * opts.tol) continue;
+        if (m.bg && dc >= Math.hypot(T[q] - m.bg[0], T[q + 1] - m.bg[1], T[q + 2] - m.bg[2])) continue; // mais parecido com o fundo
+        bin[y * W + x] = 1; break;
+      }
+    }
+    const A = models.reduce((a, m) => a + m.area, 0) / models.length, C = Math.min(...models.map((m) => m.circ));
+    const Amin = Math.min(...models.map((m) => m.area)), Amax = Math.max(...models.map((m) => m.area));
+    const { lab, comps } = MM.label(bin, W, H), cand = [];
+    for (const c of comps) {
+      if (c.area < Math.max(3, Amin * opts.minF)) continue;
+      let m = MM.maskFromLabel(lab, W, c); m = MM.fillHoles(m);
+      const area = MM.maskCount(m), r = MM.measureMask(m, null, W);
+      if (area > Amax * 40) continue; // região grande demais (borda da placa, reflexo)
+      cand.push({ x: r.centroid[0], y: r.centroid[1], area, circ: area > 30 ? r.circularity : 1 });
+    }
+    // redondas dentro da faixa de tamanho = colônias isoladas
+    const round = (c) => c.circ >= C - opts.circTol;
+    const singles = cand.filter((c) => round(c) && c.area <= Amax * opts.maxF);
+    const sa = singles.map((c) => c.area).sort((a, b) => a - b), Amed = sa.length ? sa[sa.length >> 1] : A;
+    const items = [];
+    for (const c of cand) {
+      let n = 1;
+      if (round(c)) { if (c.area > Amax * opts.maxF) { if (!opts.clusters) continue; n = Math.max(2, Math.round(c.area / Amed)); } }
+      else if (c.area >= 1.4 * Amed) { if (opts.clusters) n = Math.max(2, Math.round(c.area / Amed)); } // aglomerado irregular
+      else if (c.circ < C - 2 * opts.circTol) continue; // forma estranha e pequena: não é colônia
+      items.push({ x: c.x, y: c.y, area: c.area, n, r: Math.sqrt(c.area / Math.PI), auto: true });
+    }
+    return items;
+  };
+
+  /* ---------- Separar objetos encostados (watershed pelo mapa de distância, como o "Watershed" do ImageJ) ---------- */
+  // Inunda do centro para a borda; quando duas regiões com picos significativos (proeminência ≥ tol px) se encontram,
+  // o pixel vira linha divisória (fundo). Retorna nova imagem binária.
+  MM.splitTouching = (bin, W, H, tol = 1, rel = 0) => {
+    const N = W * H, dist = MM.distanceTo(bin, W, H, 0);
+    let maxK = 0; const key = new Int32Array(N);
+    for (let i = 0; i < N; i++) if (bin[i]) { key[i] = Math.round(dist[i] * 3); if (key[i] > maxK) maxK = key[i]; }
+    const count = new Int32Array(maxK + 2); for (let i = 0; i < N; i++) if (bin[i]) count[key[i]]++;
+    const start = new Int32Array(maxK + 2); for (let k = maxK - 1; k >= 0; k--) start[k] = start[k + 1] + count[k + 1];
+    const order = new Int32Array(start[0] + count[0]), pos = start.slice();
+    for (let i = 0; i < N; i++) if (bin[i]) order[pos[key[i]]++] = i; // decrescente por distância
+    const parent = new Int32Array(N).fill(-1), peak = new Float32Array(N), LINE = -2;
+    const find = (a) => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+    const out = bin.slice(), roots = [];
+    for (let oi = 0; oi < order.length; oi++) {
+      const p = order[oi], x = p % W, y = (p / W) | 0, d = dist[p]; roots.length = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+        const q = yy * W + xx; if (parent[q] < 0) continue; const r = find(q); if (!roots.includes(r)) roots.push(r);
+      }
+      if (!roots.length) { parent[p] = p; peak[p] = d; continue; }
+      const sig = roots.filter((r) => peak[r] - d >= Math.max(tol, rel * peak[r])); // proeminência mínima: absoluta e relativa ao tamanho
+      if (sig.length >= 2) { parent[p] = LINE; out[p] = 0; continue; }
+      let best = roots[0]; for (const r of roots) if (peak[r] > peak[best]) best = r;
+      for (const r of roots) if (r !== best) parent[r] = best;
+      parent[p] = best;
+    }
+    return out;
+  };
+
+  /* ---------- Leitor de TIFF ---------- */
+  // Baseline + LZW, PackBits, Deflate; 1/8/16/32 bits (inteiro ou float); cinza, RGB(A), paleta; faixas ou blocos;
+  // várias páginas. Lê a escala gravada pelo ImageJ (unit=… + XResolution) ou em centímetros.
+  // Retorna Promise<{pages:[{W,H,rgba,cal,bits}], total}>. maxPages limita quantas páginas decodificar.
+  MM.decodeTIFF = async (buf, maxPages = 20) => {
+    const dv = new DataView(buf), le = dv.getUint16(0) === 0x4949;
+    if (!le && dv.getUint16(0) !== 0x4d4d) throw new Error('não é TIFF');
+    const magic = dv.getUint16(2, le); if (magic === 43) throw new Error('BigTIFF ainda não é suportado'); if (magic !== 42) throw new Error('não é TIFF');
+    const SZ = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8 };
+    const readVal = (type, off) => { switch (type) { case 3: return dv.getUint16(off, le); case 4: return dv.getUint32(off, le); case 8: return dv.getInt16(off, le); case 9: return dv.getInt32(off, le); case 5: return dv.getUint32(off, le) / (dv.getUint32(off + 4, le) || 1); case 10: return dv.getInt32(off, le) / (dv.getInt32(off + 4, le) || 1); case 11: return dv.getFloat32(off, le); case 12: return dv.getFloat64(off, le); default: return dv.getUint8(off); } };
+    const ifds = []; let off = dv.getUint32(4, le), total = 0; const seen = new Set();
+    while (off && off < buf.byteLength && !seen.has(off)) {
+      seen.add(off); total++;
+      const n = dv.getUint16(off, le), tags = {};
+      for (let i = 0; i < n; i++) {
+        const e = off + 2 + i * 12, tag = dv.getUint16(e, le), type = dv.getUint16(e + 2, le), cnt = dv.getUint32(e + 4, le), sz = (SZ[type] || 1) * cnt;
+        const vo = sz <= 4 ? e + 8 : dv.getUint32(e + 8, le);
+        if (type === 2) { let t = ''; for (let k = 0; k < cnt - 1 && vo + k < buf.byteLength; k++) t += String.fromCharCode(dv.getUint8(vo + k)); tags[tag] = t; }
+        else { const a = []; for (let k = 0; k < Math.min(cnt, 1 << 22); k++) a.push(readVal(type, vo + k * (SZ[type] || 1))); tags[tag] = a; }
+      }
+      if (ifds.length < maxPages) ifds.push(tags);
+      off = dv.getUint32(off + 2 + n * 12, le);
+    }
+    const lzw = (src) => { // LZW do TIFF (código MSB primeiro, troca de tamanho antecipada)
+      const out = []; let dict = [], bits = 9, pos = 0, prev = null;
+      const reset = () => { dict = []; for (let i = 0; i < 256; i++) dict.push([i]); dict.push(null, null); bits = 9; };
+      const read = () => { let v = 0; for (let i = 0; i < bits; i++) { const byte = src[(pos + i) >> 3]; v = (v << 1) | (((byte === undefined ? 0 : byte) >> (7 - ((pos + i) & 7))) & 1); } pos += bits; return v; };
+      reset();
+      while ((pos + bits) <= src.length * 8) {
+        const c = read(); if (c === 257) break;
+        if (c === 256) { reset(); prev = null; continue; }
+        let ent; if (c < dict.length && dict[c]) ent = dict[c]; else if (prev) ent = prev.concat([prev[0]]); else break;
+        for (const b of ent) out.push(b);
+        if (prev) dict.push(prev.concat([ent[0]]));
+        prev = ent;
+        if (dict.length + 1 >= (1 << bits) && bits < 12) bits++;
+      }
+      return Uint8Array.from(out);
+    };
+    const packbits = (src) => { const out = []; let i = 0; while (i < src.length) { const n = (src[i] << 24) >> 24; i++; if (n >= 0) { for (let k = 0; k <= n; k++) out.push(src[i++]); } else if (n !== -128) { const v = src[i++]; for (let k = 0; k < 1 - n; k++) out.push(v); } } return Uint8Array.from(out); };
+    const inflate = async (src) => { const ds = new DecompressionStream('deflate'); const w = ds.writable.getWriter(); w.write(src); w.close(); return new Uint8Array(await new Response(ds.readable).arrayBuffer()); };
+    const pages = [];
+    for (const t of ifds) {
+      const W = t[256][0], H = t[257][0], bpsA = t[258] || [1], bps = bpsA[0], spp = (t[277] || [1])[0], comp = (t[259] || [1])[0];
+      const photo = (t[262] || [1])[0], planar = (t[284] || [1])[0], pred = (t[317] || [1])[0], fmt = (t[339] || [1])[0];
+      if (![1, 5, 8, 32946, 32773].includes(comp)) throw new Error(comp === 7 ? 'TIFF com compressão JPEG ainda não é suportado' : `TIFF com compressão ${comp} não suportada`);
+      const tiled = !!t[322], tw = tiled ? t[322][0] : W, th = tiled ? t[323][0] : (t[278] || [H])[0];
+      const offs = tiled ? t[324] : t[273], cnts = tiled ? t[325] : t[279];
+      const Bps = Math.max(1, bps / 8), planes = planar === 2 ? spp : 1, sppPlane = planar === 2 ? 1 : spp;
+      const raw = new Float64Array(W * H * spp); // valores originais
+      const per = Math.ceil(W / tw) * (tiled ? Math.ceil(H / th) : 1), chunksPerPlane = tiled ? per : Math.ceil(H / th);
+      for (let ci = 0; ci < offs.length; ci++) {
+        let src = new Uint8Array(buf, offs[ci], Math.min(cnts[ci], buf.byteLength - offs[ci]));
+        if (comp === 5) src = lzw(src); else if (comp === 8 || comp === 32946) src = await inflate(src); else if (comp === 32773) src = packbits(src);
+        const plane = Math.floor(ci / chunksPerPlane), k = ci % chunksPerPlane;
+        const x0 = tiled ? (k % Math.ceil(W / tw)) * tw : 0, y0 = tiled ? Math.floor(k / Math.ceil(W / tw)) * th : k * th;
+        const cw = tiled ? tw : W, ch = Math.min(th, H - y0), rowBytes = bps === 1 ? Math.ceil(cw * sppPlane / 8) : cw * sppPlane * Bps;
+        const sdv = new DataView(src.buffer, src.byteOffset, src.byteLength);
+        for (let y = 0; y < ch && y0 + y < H; y++) {
+          const prevRow = new Float64Array(sppPlane);
+          for (let x = 0; x < cw; x++) for (let c = 0; c < sppPlane; c++) {
+            let v; const o = y * rowBytes + (x * sppPlane + c) * Bps;
+            if (bps === 1) { const bi = y * rowBytes * 8 + x; v = (src[bi >> 3] >> (7 - (bi & 7))) & 1; }
+            else if (o + Bps > src.length) v = 0;
+            else if (bps === 8) v = fmt === 2 ? sdv.getInt8(o) : src[o];
+            else if (bps === 16) v = fmt === 2 ? sdv.getInt16(o, le) : sdv.getUint16(o, le);
+            else if (bps === 32) v = fmt === 3 ? sdv.getFloat32(o, le) : fmt === 2 ? sdv.getInt32(o, le) : sdv.getUint32(o, le);
+            else if (bps === 64) v = sdv.getFloat64(o, le); else v = src[o];
+            if (pred === 2 && x > 0 && fmt !== 3) { v = v + prevRow[c]; if (bps === 8) v &= 255; else if (bps === 16) v &= 65535; }
+            prevRow[c] = v;
+            const X = x0 + x, Y = y0 + y; if (X >= W) continue;
+            raw[(Y * W + X) * spp + (planar === 2 ? plane : c)] = v;
+          }
+        }
+      }
+      // para 8 bits de exibição: 8 bits direto; demais pelo mínimo–máximo (como o ImageJ mostra)
+      let mn = Infinity, mx = -Infinity; const colorCh = Math.min(spp, 3);
+      if (bps !== 8 || fmt === 3) for (let i = 0; i < W * H; i++) for (let c = 0; c < colorCh; c++) { const v = raw[i * spp + c]; if (Number.isFinite(v)) { if (v < mn) mn = v; if (v > mx) mx = v; } }
+      const sc = (v) => (bps === 8 && fmt !== 3) ? v : bps === 1 ? v * 255 : (mx > mn ? (v - mn) * 255 / (mx - mn) : 0);
+      const rgba = new Uint8ClampedArray(W * H * 4), cmap = t[320];
+      for (let i = 0; i < W * H; i++) {
+        const o = i * 4;
+        if (photo === 3 && cmap) { const v = raw[i * spp], n = 1 << bps; rgba[o] = cmap[v] >> 8; rgba[o + 1] = cmap[n + v] >> 8; rgba[o + 2] = cmap[2 * n + v] >> 8; }
+        else if (spp >= 3) for (let c = 0; c < 3; c++) rgba[o + c] = sc(raw[i * spp + c]);
+        else { let g = sc(raw[i * spp]); if (photo === 0) g = 255 - g; rgba[o] = rgba[o + 1] = rgba[o + 2] = g; }
+        rgba[o + 3] = 255;
+      }
+      // calibração
+      let cal = null; const desc = typeof t[270] === 'string' ? t[270] : '';
+      const xr = t[282] ? t[282][0] : 0, ru = t[296] ? t[296][0] : 2;
+      const um = /unit=([^\n\r]+)/.exec(desc), U = { micron: 'µm', um: 'µm', 'µm': 'µm', 'μm': 'µm', microns: 'µm', nm: 'nm', mm: 'mm', cm: 'cm', m: 'm', meter: 'm', inch: 'pol', km: 'km' };
+      if (um && xr > 0) { const u = U[um[1].trim().replace(/\\/g, '').toLowerCase()]; if (u) cal = { ppu: xr, unit: u, source: 'ImageJ' }; }
+      else if (ru === 3 && xr > 0) cal = { ppu: xr, unit: 'cm', source: 'TIFF' };
+      pages.push({ W, H, rgba, cal, bits: bps });
+    }
+    return { pages, total };
+  };
+
+  /* ---------- Placa: maior círculo da foto ---------- */
+  // Hough de círculos por direção do gradiente numa cópia reduzida (~500 px). Retorna {cx, cy, r} ou null.
+  MM.detectPlate = (rgba, W, H) => {
+    const f = Math.max(1, Math.ceil(Math.max(W, H) / 500)), w = Math.floor(W / f), h = Math.floor(H / f);
+    if (w < 40 || h < 40) return null;
+    const gray = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let s2 = 0; for (let j = 0; j < f; j++) for (let i = 0; i < f; i++) { const k = ((y * f + j) * W + x * f + i) * 4; s2 += 0.299 * rgba[k] + 0.587 * rgba[k + 1] + 0.114 * rgba[k + 2]; }
+      gray[y * w + x] = s2 / (f * f);
+    }
+    const g2 = new Float32Array(w * h); // suavização
+    for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { let s2 = 0; for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) s2 += gray[(y + j) * w + x + i]; g2[y * w + x] = s2 / 9; }
+    const gx = new Float32Array(w * h), gy = new Float32Array(w * h), mag = new Float32Array(w * h);
+    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+      const i = y * w + x;
+      gx[i] = g2[i - w + 1] + 2 * g2[i + 1] + g2[i + w + 1] - g2[i - w - 1] - 2 * g2[i - 1] - g2[i + w - 1];
+      gy[i] = g2[i + w - 1] + 2 * g2[i + w] + g2[i + w + 1] - g2[i - w - 1] - 2 * g2[i - w] - g2[i - w + 1];
+      mag[i] = Math.hypot(gx[i], gy[i]);
+    }
+    const sorted = Array.from(mag).filter((v) => v > 0).sort((a, b) => a - b);
+    const thr = Math.max(20, sorted[Math.floor(sorted.length * 0.9)] || 0);
+    const edges = []; for (let i = 0; i < w * h; i++) if (mag[i] > thr) edges.push(i);
+    const rMin = Math.round(Math.min(w, h) * 0.15), rMax = Math.round(Math.max(w, h) * 0.55);
+    const acc = new Float32Array(w * h);
+    for (const i of edges) {
+      const x = i % w, y = (i / w) | 0, dx = gx[i] / mag[i], dy = gy[i] / mag[i];
+      for (let r = rMin; r <= rMax; r++) for (const sg of [1, -1]) {
+        const cx = Math.round(x + sg * r * dx), cy = Math.round(y + sg * r * dy);
+        if (cx >= 0 && cy >= 0 && cx < w && cy < h) acc[cy * w + cx]++;
+      }
+    }
+    const sm = new Float32Array(w * h);
+    for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { let s2 = 0; for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) s2 += acc[(y + j) * w + x + i]; sm[y * w + x] = s2; }
+    // até 6 picos separados
+    const peaks = [], used = new Uint8Array(w * h);
+    for (let k = 0; k < 6; k++) {
+      let b = -1, bv = 0; for (let i = 0; i < w * h; i++) if (!used[i] && sm[i] > bv) { bv = sm[i]; b = i; }
+      if (b < 0) break; peaks.push(b); const bx = b % w, by = (b / w) | 0, R = Math.round(Math.min(w, h) * 0.05);
+      for (let y = Math.max(0, by - R); y < Math.min(h, by + R); y++) for (let x = Math.max(0, bx - R); x < Math.min(w, bx + R); x++) used[y * w + x] = 1;
+    }
+    let best = null;
+    for (const c of peaks) {
+      const cx = c % w, cy = (c / w) | 0, hist = new Float32Array(rMax + 3);
+      for (const i of edges) {
+        const x = i % w, y = (i / w) | 0, d = Math.hypot(x - cx, y - cy); if (d < rMin - 1 || d > rMax + 1) continue;
+        const cs = Math.abs(((x - cx) * gx[i] + (y - cy) * gy[i]) / (d * mag[i])); if (cs < 0.85) continue;
+        hist[Math.round(d)]++;
+      }
+      const sup = (r) => (hist[r - 1] + hist[r] + hist[r + 1]) / (2 * Math.PI * r); // fração da circunferência com borda
+      let mx = 0; for (let r = rMin; r <= rMax; r++) mx = Math.max(mx, sup(r));
+      if (mx < 0.7) continue; // sem círculo nítido: não é placa
+      let rr = 0; for (let r = rMax; r >= rMin; r--) if (sup(r) >= Math.max(0.35, 0.6 * mx)) { rr = r; break; } // o maior círculo forte
+      // cobertura angular: a borda precisa aparecer em volta do círculo, não num trecho só
+      const bins = new Uint8Array(36); let inside = 0;
+      for (const i of edges) { const x = i % w, y = (i / w) | 0, d = Math.hypot(x - cx, y - cy); if (Math.abs(d - rr) > 2) continue; bins[Math.floor(((Math.atan2(y - cy, x - cx) + Math.PI) / (2 * Math.PI)) * 36) % 36] = 1; }
+      let cov = 0; for (let b = 0; b < 36; b++) { const a = (b + 0.5) / 36 * 2 * Math.PI - Math.PI, px = cx + rr * Math.cos(a), py = cy + rr * Math.sin(a); if (px >= 0 && py >= 0 && px < w && py < h) { inside++; cov += bins[b]; } }
+      if (!inside || cov / inside < 0.6) continue;
+      if (!best || mx > best.score) best = { cx, cy, r: rr, score: mx }; // centro com o círculo mais nítido
+    }
+    if (!best) return null;
+    return { cx: (best.cx + 0.5) * f, cy: (best.cy + 0.5) * f, r: best.r * f };
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = MM; else root.MM = MM;
+})(typeof self !== 'undefined' ? self : this);
+</script>
+<script>/* MetricMod — interface de janela única com fluxos guiados. */
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('canvasWrap'), guide = $('guide');
+  const COLORS = ['#ff3d7f', '#00b3e6', '#ffb000', '#8f6bff', '#00c48c', '#ff6b2c', '#e040fb', '#4fc3f7'];
+  const PREFIX = { area: 'A', length: 'C', lw: 'CL', count: 'N', colony: 'P' };
+
+  const S = {
+    img: null, imgCanvas: null, W: 0, H: 0, rgba: null, det: null, name: '',
+    scale: null, view: { z: 1, ox: 0, oy: 0 }, objs: [], seq: { area: 0, length: 0, lw: 0, count: 0 },
+    sel: null, tool: null, flow: {}, undo: [], redo: [],
+    sens: 50, fill: true, excl: false, refine: true, minArea: 0, brushPx: 18, preview: null, previewCount: null,
+    pointer: null, space: false, drag: null, grad: null,
+    style: { width: 2, dash: 'solid', legend: 'line', size: 13, tags: true },
+  };
+  try { Object.assign(S.style, JSON.parse(localStorage.getItem('metricmod.style') || '{}')); } catch { /* sem armazenamento */ }
+  const saveStyle = () => { try { localStorage.setItem('metricmod.style', JSON.stringify(S.style)); } catch { /* ignora */ } };
+
+  /* ---------- ícones ---------- */
+  const I = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  const ICONS = {
+    scale: I('<path d="M2 16 16 2l6 6L8 22z"/><path d="m6 12 2 2m1-5 2 2m1-5 2 2"/>'),
+    area: I('<path d="M5 9c0-4 7-6 11-3s4 10-1 12-10 1-10-9z"/><path d="M9 12h0M12 10h0M13 14h0" stroke-width="2.6"/>'),
+    detect: I('<circle cx="7" cy="8" r="3"/><circle cx="16" cy="7" r="2.5"/><circle cx="12" cy="16" r="3.5"/><path d="M2 2h4M2 2v4M22 22h-4M22 22v-4"/>'),
+    length: I('<path d="M4 20 20 4"/><circle cx="4" cy="20" r="2"/><circle cx="20" cy="4" r="2"/>'),
+    lw: I('<ellipse cx="12" cy="12" rx="9" ry="5" transform="rotate(-30 12 12)"/><path d="M4 17 20 7M10 8l4 8"/>'),
+    count: I('<circle cx="6" cy="7" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="8" cy="17" r="2.5"/><circle cx="17" cy="16" r="2.5"/>'),
+    edit: I('<path d="M4 20c3 0 4-2 4-4a3 3 0 1 1 3 3"/><path d="m11 13 8-8 2 2-8 8"/>'),
+    select: I('<path d="m5 3 14 8-6 2-2 6z"/>'),
+    persp: I('<path d="M6 5h12l3 14H3z"/><path d="M9 9h6M8 14h8" stroke-dasharray="2 2"/>'),
+    colony: I('<circle cx="12" cy="12" r="9.5"/><circle cx="9" cy="9" r="1.6"/><circle cx="15" cy="10" r="1.6"/><circle cx="10" cy="15" r="1.6"/><circle cx="15.5" cy="15" r="1.2"/>'),
+  };
+  const TOOLS = [
+    { group: 'Preparar' },
+    { id: 'scale', name: 'Escala', hint: 'Informe a medida da régua' },
+    { id: 'persp', name: 'Corrigir perspectiva', hint: 'Endireita a foto por um retângulo' },
+    { group: 'Medir' },
+    { id: 'area', name: 'Área', hint: 'Contorne ou clique no objeto' },
+    { id: 'detect', name: 'Detectar objetos', hint: 'Mede todos de uma vez' },
+    { id: 'length', name: 'Comprimento', hint: 'Uma linha por objeto' },
+    { id: 'lw', name: 'Comprimento × Largura', hint: 'Duas linhas por objeto' },
+    { id: 'count', name: 'Contagem', hint: 'Clique em cada item' },
+    { id: 'colony', name: 'Contar colônias', hint: 'Marca todas as parecidas' },
+    { group: 'Ajustar' },
+    { id: 'edit', name: 'Ajustar contorno', hint: 'Complete ou apague partes' },
+    { id: 'select', name: 'Mover e selecionar', hint: 'Arraste as pontas das linhas' },
+  ];
+  $('tools').innerHTML = TOOLS.map((t) => t.group ? `<h2>${t.group}</h2>` :
+    `<button class="tool" data-tool="${t.id}" disabled><span class="ic">${ICONS[t.id]}</span><span><b>${t.name}</b><small>${t.hint}</small></span></button>`).join('');
+  document.querySelectorAll('.tool').forEach((b) => b.onclick = () => setTool(S.tool === b.dataset.tool ? null : b.dataset.tool));
+
+  /* ---------- utilidades ---------- */
+  // unidades: fator em metros
+  const UNITS = [['nm', 1e-9, 'nanômetro'], ['µm', 1e-6, 'micrômetro'], ['mm', 1e-3, 'milímetro'], ['cm', 1e-2, 'centímetro'], ['dm', 1e-1, 'decímetro'], ['m', 1, 'metro'], ['km', 1e3, 'quilômetro'], ['pol', 0.0254, 'polegada'], ['pé', 0.3048, 'pé']];
+  const UF = Object.fromEntries(UNITS.map((u) => [u[0], u[1]]));
+  const unitOpts = (sel) => UNITS.map(([u, , n]) => `<option value="${u}" ${u === sel ? 'selected' : ''}>${u} (${n})</option>`).join('');
+  const unit = () => S.scale ? (S.dispUnit || S.scale.unit) : 'px';
+  const k = () => S.scale ? (1 / S.scale.ppu) * UF[S.scale.unit] / UF[unit()] : 1;
+  const nf = (v, d) => Number.isFinite(v) ? v.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+  const digits = (v) => { const a = Math.abs(v); return a >= 1000 ? 0 : a >= 100 ? 1 : a >= 10 ? 2 : 3; };
+  const fmt = (v) => nf(v, digits(v));
+  const fmtLen = (px) => `${fmt(px * k())} ${unit()}`;
+  const fmtArea = (px2) => `${fmt(px2 * k() * k())} ${unit()}²`;
+  const lineLen = (l) => Math.hypot(l[2] - l[0], l[3] - l[1]);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let toastT; const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); };
+  const busy = (on) => { $('busy').style.display = on ? 'block' : 'none'; };
+  const later = (fn) => { busy(true); setTimeout(() => { try { fn(); } finally { busy(false); } }, 20); };
+  const thresholdFromSens = () => { const o = S.det ? S.det.threshold : 128; return Math.max(1, Math.min(254, Math.round(o * (2 - S.sens / 50)))); };
+  const ensureDet = () => { if (!S.det) S.det = MM.backgroundDistance(S.rgba, S.W, S.H); return S.det; };
+  const ensureGrad = () => { if (!S.grad) S.grad = MM.gradient(S.rgba, S.W, S.H); return S.grad; };
+  const ensureBlur = () => { if (!S.blur) S.blur = MM.blurRGBA(S.rgba, S.W, S.H); return S.blur; };
+  const objName = (o) => `${PREFIX[o.kind]}${o.n}`;
+
+  /* ---------- desfazer ---------- */
+  const cloneStrokes = (a) => a.map((st) => st.map((p) => p.slice()));
+  const cloneObj = (o) => ({ ...o, poly: o.poly && o.poly.map((p) => p.slice()), line: o.line && o.line.slice(), lines: o.lines && o.lines.map((l) => l.slice()), points: o.points && o.points.map((p) => p.slice()), seeds: o.seeds && { fg: cloneStrokes(o.seeds.fg), bg: cloneStrokes(o.seeds.bg) },
+    models: o.models && o.models.slice(), auto: o.auto && o.auto.slice(), removed: o.removed && o.removed.map((p) => p.slice()), added: o.added && o.added.map((i) => ({ ...i })), roi: o.roi && { ...o.roi }, params: o.params && { ...o.params } });
+  const snap = () => ({ objs: S.objs.map(cloneObj), scale: S.scale && { ...S.scale, line: S.scale.line && S.scale.line.slice() }, seq: { ...S.seq } });
+  const pushUndo = () => { S.undo.push(snap()); if (S.undo.length > 80) S.undo.shift(); S.redo = []; updUndo(); };
+  const restore = (s) => { S.objs = s.objs; S.scale = s.scale; S.seq = s.seq; if (!S.objs.find((o) => o.id === S.sel)) S.sel = null; S.flow.temp = null; refreshAll(); };
+  const undo = () => { if (!S.undo.length) return; S.redo.push(snap()); restore(S.undo.pop()); updUndo(); };
+  const redo = () => { if (!S.redo.length) return; S.undo.push(snap()); restore(S.redo.pop()); updUndo(); };
+  const updUndo = () => { $('btnUndo').disabled = !S.undo.length; $('btnRedo').disabled = !S.redo.length; };
+  let idSeq = 1;
+  S.group = ''; S.groups = [];
+  const addObj = (o) => { o.id = idSeq++; S.seq[o.kind] = (S.seq[o.kind] || 0) + 1; o.n = S.seq[o.kind]; o.color = COLORS[(o.n - 1) % COLORS.length]; o.group = S.group; S.objs.push(o); return o; };
+
+  /* ---------- colônias ---------- */
+  // marcações finais = automáticas (menos as apagadas) + adicionadas à mão
+  function colonyItems(o) {
+    const auto = (o.auto || []).filter((it) => !o.removed.some((p) => Math.hypot(p[0] - it.x, p[1] - it.y) <= it.r + 3));
+    return auto.concat(o.added);
+  }
+  const typicalR = (o) => { const a = o.models.reduce((s2, m) => s2 + m.area, 0) / o.models.length; return Math.sqrt(a / Math.PI); };
+  function recomputeColonies(o, cb) {
+    later(() => {
+      const P = o.params;
+      o.auto = MM.findColonies(ensureBlur(), S.W, S.H, o.models, { tol: P.tol, minF: 1 / P.size, maxF: P.size, circTol: P.shape, clusters: P.clusters, roi: o.roi });
+      refreshAll(); if (cb) cb();
+    });
+  }
+  const COL_PARAMS = () => ({ tol: 2.5, size: 3, shape: 0.2, clusters: true });
+  function colonyCreate() {
+    const f = S.flow; if (!f.samples || !f.samples.length) return;
+    pushUndo();
+    const n = addObj({ kind: 'colony', models: f.samples.map((x) => x.model), auto: [], removed: [], added: [], roi: f.roi ? { ...f.roi } : null, params: COL_PARAMS() });
+    S.sel = n.id; f.samples = []; f.mode = null;
+    recomputeColonies(n, () => { if (!colonyItems(n).length) toast('Nenhuma colônia parecida encontrada. Aumente a tolerância de cor.'); });
+  }
+  function colonyClick(p) {
+    if (p.x < 0 || p.y < 0 || p.x >= S.W || p.y >= S.H) return;
+    const f = S.flow, o = selObj(), col = o && o.kind === 'colony' ? o : null;
+    if (!col || f.mode === 'example') {
+      later(() => {
+        const md = colonySample(Math.floor(p.x), Math.floor(p.y)); if (!md) return;
+        if (col) { pushUndo(); col.models = col.models.concat([md]); f.mode = null; recomputeColonies(col); return; }
+        f.samples = (f.samples || []).concat([{ model: md, outline: md.outline, x: p.x, y: p.y }]);
+        if (f.samples.length >= 3) colonyCreate(); else refreshAll();
+      });
+      return;
+    }
+    pushUndo();
+    const it = colonyItems(col), tol = 6 / S.view.z;
+    const hit = it.find((i) => Math.hypot(i.x - p.x, i.y - p.y) <= Math.max(i.r, 3) + tol);
+    if (hit) { if (hit.auto) col.removed.push([hit.x, hit.y]); else col.added = col.added.filter((i) => i !== hit); }
+    else col.added.push({ x: p.x, y: p.y, n: 1, r: typicalR(col), area: NaN, auto: false });
+    refreshAll();
+  }
+  function detectPlateInto(f, quiet) {
+    later(() => {
+      const c = MM.detectPlate(S.rgba, S.W, S.H), o = selObj(), col = o && o.kind === 'colony' ? o : null;
+      const roi = c ? { cx: c.cx, cy: c.cy, rx: c.r, ry: c.r } : null;
+      if (col) { pushUndo(); col.roi = roi; recomputeColonies(col); } else f.roi = roi;
+      if (c) toast('Placa encontrada. Arraste dentro dela para centralizar e puxe a borda para ajustar o tamanho.');
+      else if (!quiet) toast('Não encontrei uma placa redonda nesta foto. Desenhe a placa ou conte na foto inteira.');
+      refreshAll();
+    });
+  }
+  function colonySample(x, y) { // segmenta a colônia clicada e devolve o modelo
+    const m = MM.segmentSeeds(ensureGrad(), S.W, S.H, [[[x, y]]], [], { fillHoles: true, minArea: 4 });
+    const n = MM.maskCount(m);
+    if (n < 4) { toast('Não consegui separar essa colônia. Dê zoom e clique no centro dela.'); return null; }
+    if (n > S.W * S.H * 0.05) { toast('O contorno pegou uma região grande demais. Clique bem no centro de uma colônia, ou marque a área da placa antes.'); return null; }
+    const md = MM.colonyModel(ensureBlur(), S.W, m, S.H); md.outline = MM.outlines(m).map((o) => o.poly); return md;
+  }
+
+  /* ---------- medições ---------- */
+  const mCache = new WeakMap();
+  const measureArea = (o) => {
+    let m = mCache.get(o.mask);
+    if (!m) { m = MM.measureMask(o.mask, S.rgba, S.W); mCache.set(o.mask, m); }
+    if (o.poly) { // traçado à mão/polígono ainda não editado: perímetro e Feret pelo traçado (como o ImageJ)
+      const key = o.poly; let pm = mCache.get(key);
+      if (!pm) {
+        const perim = MM.polyLength(o.poly, true, o.method === 'free' || o.method === 'magnetic'), f = MM.feret(MM.convexHull(o.poly));
+        pm = { ...m, perimeter: perim, feret: f.max, minFeret: f.min, maxLine: f.maxLine, minLine: f.minLine, circularity: Math.min(1, 4 * Math.PI * m.area / (perim * perim)) };
+        mCache.set(key, pm);
+      }
+      return pm;
+    }
+    return m;
+  };
+  const lwSorted = (o) => { const [a, b] = o.lines; return lineLen(a) >= lineLen(b) ? [a, b] : [b, a]; };
+
+  /* ---------- vista ---------- */
+  const toImg = (sx, sy) => [(sx - S.view.ox) / S.view.z, (sy - S.view.oy) / S.view.z];
+  const toScr = (x, y) => [x * S.view.z + S.view.ox, y * S.view.z + S.view.oy];
+  const fit = () => {
+    if (!S.img) return; const r = wrap.getBoundingClientRect();
+    const z = Math.min(r.width / S.W, r.height / S.H) * 0.94;
+    S.view = { z, ox: (r.width - S.W * z) / 2, oy: (r.height - S.H * z) / 2 }; render();
+  };
+  const zoomAt = (f, sx, sy) => {
+    const r = wrap.getBoundingClientRect(); if (sx == null) { sx = r.width / 2; sy = r.height / 2; }
+    const z = Math.max(0.02, Math.min(40, S.view.z * f)), [ix, iy] = toImg(sx, sy);
+    S.view.z = z; S.view.ox = sx - ix * z; S.view.oy = sy - iy * z; render();
+  };
+
+  /* ---------- desenho ---------- */
+  const maskCanvases = new WeakMap();
+  const maskCanvas = (o) => {
+    let c = maskCanvases.get(o.mask);
+    if (c && c._color === o.color) return c;
+    const m = o.mask; c = document.createElement('canvas'); c.width = Math.max(1, m.w); c.height = Math.max(1, m.h); c._color = o.color;
+    if (m.w && m.h) {
+      const id = c.getContext('2d').createImageData(m.w, m.h), r = parseInt(o.color.slice(1, 3), 16), g = parseInt(o.color.slice(3, 5), 16), b = parseInt(o.color.slice(5, 7), 16);
+      for (let i = 0; i < m.data.length; i++) if (m.data[i]) { id.data[i * 4] = r; id.data[i * 4 + 1] = g; id.data[i * 4 + 2] = b; id.data[i * 4 + 3] = 85; }
+      c.getContext('2d').putImageData(id, 0, 0);
+    }
+    maskCanvases.set(o.mask, c); return c;
+  };
+
+  let raf = 0;
+  const render = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw(); }); };
+
+  // Texto de cada medição (usado nos rótulos e na legenda).
+  function describe(o) {
+    if (o.kind === 'area') return `Área ${fmtArea(measureArea(o).area)}`;
+    if (o.kind === 'length') return `Comprimento ${fmtLen(lineLen(o.line))}`;
+    if (o.kind === 'lw') { const [a, b] = lwSorted(o); return `Comprimento ${fmtLen(lineLen(a))}, largura ${fmtLen(lineLen(b))}`; }
+    if (o.kind === 'count') return `Contagem: ${o.points.length} ${o.points.length === 1 ? 'item' : 'itens'}`;
+    if (o.kind === 'colony') { const n = colonyItems(o).reduce((a, i) => a + i.n, 0); return `Colônias: ${n}`; }
+    return '';
+  }
+  const DASH = { solid: [], dash: [3, 2], dot: [0.01, 2] };
+
+  // Desenha camadas de medição. g: contexto; P: mapeia imagem→destino; u: tamanho de unidade gráfica (px).
+  function drawOverlays(g, P, u) {
+    const st = S.style, LW = st.width, fs = st.size, onLine = st.legend === 'line';
+    const tagOnly = !onLine && st.tags, noText = !onLine && !st.tags;
+    const placed = [];
+    const label = (x, y, text, color, strong) => {
+      g.font = `${strong ? 600 : 500} ${fs * u}px Bahnschrift, "Segoe UI", sans-serif`;
+      const w = g.measureText(text).width + 12 * u, h = fs * 1.55 * u;
+      const hit = (yy) => placed.some((r) => Math.abs(r[0] - x) < (r[2] + w) / 2 + 2 * u && Math.abs(r[1] - yy) < h + 2 * u);
+      for (let t = 1; t < 8 && hit(y); t++) { const dy = Math.ceil(t / 2) * (h + 3 * u) * (t % 2 ? 1 : -1); if (!hit(y + dy)) { y += dy; break; } }
+      placed.push([x, y, w]);
+      g.fillStyle = 'rgba(0,0,0,.8)'; g.beginPath(); g.roundRect(x - w / 2, y - h / 2, w, h, 5 * u); g.fill();
+      g.fillStyle = color; g.fillRect(x - w / 2, y - h / 2, 3 * u, h);
+      g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, x + 1.5 * u, y + 0.5 * u);
+    };
+    const tag = (o) => onLine ? `${objName(o)}  ${describe(o).replace(/^(Área|Comprimento|Contagem:) /, '')}` : objName(o);
+    const path = (pts, close) => { g.beginPath(); pts.forEach((p, i) => { const [x, y] = P(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); if (close) g.closePath(); };
+    const styled = (w, color, dash) => { // contorno escuro + linha colorida no estilo escolhido
+      const d = (dash || DASH.solid).map((v) => v * w * u * (dash === DASH.dot ? 1.6 : 2.4));
+      g.lineCap = dash === DASH.dot ? 'round' : 'butt'; g.lineJoin = 'round';
+      g.setLineDash(d); g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = (w + 2) * u; g.stroke();
+      g.strokeStyle = color; g.lineWidth = w * u; g.stroke(); g.setLineDash([]); g.lineCap = 'butt';
+    };
+    const seg = (l, color, w, dash) => {
+      const [a, b] = [P(l[0], l[1]), P(l[2], l[3])];
+      g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); styled(w, color, dash);
+      for (const p of [a, b]) { g.beginPath(); g.arc(p[0], p[1], (2.5 + w * 0.8) * u, 0, 7); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 1.6 * u; g.strokeStyle = color; g.stroke(); }
+      return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, b[0] - a[0], b[1] - a[1]];
+    };
+    const offsetLabel = (mid, text, color, strong) => {
+      const L = Math.hypot(mid[2], mid[3]) || 1, nx = -mid[3] / L, ny = mid[2] / L, off = (fs + LW * 2 + 6) * u;
+      label(mid[0] + nx * off, mid[1] + ny * off, text, color, strong);
+    };
+    const dash = DASH[st.dash] || DASH.solid;
+
+    if (S.scale && S.scale.line) {
+      const mid = seg(S.scale.line, '#f5b700', LW + 1);
+      if (onLine) offsetLabel(mid, `Escala ${nf(S.scale.known, digits(S.scale.known))} ${S.scale.unit}`, '#f5b700');
+    }
+    for (const o of S.objs) {
+      const sel = o.id === S.sel, w = LW + (sel ? 1 : 0);
+      if (o.kind === 'area') {
+        const m = measureArea(o);
+        if (o.poly) { path(o.poly, true); styled(w, o.color, dash); }
+        else for (const ol of m.outlines) { path(ol, true); styled(w, o.color, dash); }
+        if (sel && m.maxLine && S.tool !== 'edit') { seg(m.maxLine, '#ffffff', 1, DASH.dash); if (m.minLine) seg(m.minLine, '#ffffff', 1, DASH.dash); }
+        if (m.area && !noText) { const [x, y] = P(m.centroid[0], m.centroid[1]); label(x, y, tag(o), o.color, sel); }
+      } else if (o.kind === 'length') {
+        const mid = seg(o.line, o.color, w, dash); if (!noText) offsetLabel(mid, tag(o), o.color, sel);
+      } else if (o.kind === 'lw') {
+        const [a, b] = lwSorted(o);
+        const m1 = seg(a, o.color, w, dash), m2 = seg(b, o.color, Math.max(1, w * 0.75), dash);
+        if (onLine) { offsetLabel(m1, `${objName(o)} comp. ${fmtLen(lineLen(a))}`, o.color, sel); offsetLabel(m2, `larg. ${fmtLen(lineLen(b))}`, o.color, sel); }
+        else if (!noText) offsetLabel(m1, objName(o), o.color, sel);
+      } else if (o.kind === 'count') {
+        const r = (fs * 0.7 + LW) * u;
+        o.points.forEach((p, i) => {
+          const [x, y] = P(p[0], p[1]);
+          g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = o.color; g.fill(); g.lineWidth = 2 * u; g.strokeStyle = sel ? '#fff' : 'rgba(0,0,0,.6)'; g.stroke();
+          g.fillStyle = '#111'; g.font = `600 ${fs * 0.85 * u}px Bahnschrift, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(i + 1), x, y + 0.5 * u);
+        });
+        if (tagOnly && o.points.length) { const [x, y] = P(o.points[0][0], o.points[0][1]); label(x, y - r - fs * u, objName(o), o.color, sel); }
+      } else if (o.kind === 'colony') {
+        const it = colonyItems(o), z = P(1, 0)[0] - P(0, 0)[0];
+        for (const c of it) {
+          const [x, y] = P(c.x, c.y), r = Math.max(4 * u, (c.r + 2) * z);
+          g.beginPath(); g.arc(x, y, r, 0, 7); styled(Math.max(1, LW * 0.8), c.auto ? o.color : '#ffffff', c.auto ? dash : DASH.dot);
+          if (c.n > 1) { g.font = `600 ${fs * 0.85 * u}px Bahnschrift, sans-serif`; g.textAlign = 'left'; g.textBaseline = 'middle'; g.lineWidth = 3 * u; g.strokeStyle = '#000'; g.strokeText(`×${c.n}`, x + r + 2 * u, y); g.fillStyle = '#fff'; g.fillText(`×${c.n}`, x + r + 2 * u, y); }
+        }
+        if (!noText && it.length) {
+          const top = it.reduce((a, c) => (c.y < a.y ? c : a), it[0]), [x, y] = P(top.x, top.y);
+          label(x, y - (top.r * z + fs * 1.6 * u), onLine ? `${objName(o)}  ${describe(o)}` : objName(o), o.color, sel);
+        }
+      }
+    }
+    if (!onLine && st.legend !== 'none') drawLegend(g, P, u);
+    return { label, seg, path };
+  }
+
+  // Legenda num canto da imagem: cor da marcação + nome + valores.
+  function drawLegend(g, P, u) {
+    const st = S.style, fs = st.size, rows = [];
+    if (S.scale && S.scale.line) rows.push({ color: '#f5b700', text: `Escala  ${nf(S.scale.known, digits(S.scale.known))} ${S.scale.unit}`, kind: 'line' });
+    for (const o of S.objs) if (o.kind !== 'area' || o.mask.w) rows.push({ color: o.color, text: `${objName(o)}  ${describe(o)}`, kind: o.kind });
+    if (!rows.length) return;
+    g.font = `500 ${fs * u}px Bahnschrift, "Segoe UI", sans-serif`;
+    const [ix0, iy0] = P(0, 0), [ix1, iy1] = P(S.W, S.H), pad = 10 * u, rh = fs * 1.6 * u, sw = 26 * u;
+    const maxRows = Math.max(1, Math.floor((iy1 - iy0 - 2 * pad - 12 * u) / rh));
+    const cols = []; for (let i = 0; i < rows.length; i += maxRows) cols.push(rows.slice(i, i + maxRows));
+    const colW = cols.map((c) => Math.max(...c.map((r) => g.measureText(r.text).width)) + sw + 10 * u);
+    const bw = colW.reduce((a, b) => a + b, 0) + pad * 2 + (cols.length - 1) * 14 * u, bh = Math.min(rows.length, maxRows) * rh + pad * 2;
+    const m = 12 * u, right = st.legend.endsWith('r'), bottom = st.legend.startsWith('b');
+    const x = right ? ix1 - m - bw : ix0 + m, y = bottom ? iy1 - m - bh : iy0 + m;
+    g.fillStyle = 'rgba(0,0,0,.78)'; g.beginPath(); g.roundRect(x, y, bw, bh, 8 * u); g.fill();
+    let cx = x + pad;
+    cols.forEach((c, ci) => {
+      c.forEach((r, i) => {
+        const yy = y + pad + rh * i + rh / 2;
+        g.beginPath(); g.moveTo(cx, yy); g.lineTo(cx + sw - 6 * u, yy);
+        g.setLineDash((DASH[st.dash] || []).map((v) => v * st.width * u * (st.dash === 'dot' ? 1.6 : 2.4))); g.lineCap = st.dash === 'dot' ? 'round' : 'butt';
+        g.strokeStyle = r.color; g.lineWidth = Math.max(2, st.width) * u; g.stroke(); g.setLineDash([]); g.lineCap = 'butt';
+        g.fillStyle = '#fff'; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(r.text, cx + sw, yy + 0.5 * u);
+      });
+      cx += colW[ci] + 14 * u;
+    });
+  }
+
+  function draw() {
+    const r = wrap.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+    $('zoomLbl').textContent = Math.round(S.view.z * 100) + '%';
+    if (!S.img) return;
+    const { z, ox, oy } = S.view;
+    ctx.setTransform(dpr * z, 0, 0, dpr * z, dpr * ox, dpr * oy);
+    ctx.imageSmoothingEnabled = z < 2;
+    ctx.drawImage(S.imgCanvas, 0, 0);
+    if (S.tool === 'detect' && S.preview) ctx.drawImage(S.preview, 0, 0);
+    for (const o of S.objs) if (o.kind === 'area' && o.mask.w) ctx.drawImage(maskCanvas(o), o.mask.x, o.mask.y);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const T = drawOverlays(ctx, toScr, 1);
+
+    // traçados em andamento
+    const f = S.flow, p = S.pointer;
+    if (f.temp && f.temp.type === 'line') { const l = f.temp.l; const mid = T.seg(l, S.tool === 'scale' ? '#f5b700' : '#ffffff', 2.5); if (lineLen(l) > 1) T.label(mid[0] - mid[3] / (Math.hypot(mid[2], mid[3]) || 1) * 16, mid[1] + mid[2] / (Math.hypot(mid[2], mid[3]) || 1) * 16, fmtLen(lineLen(l)), '#fff'); }
+    if (f.temp && f.temp.type === 'free') { T.path(f.temp.pts, false); ctx.strokeStyle = f.temp.erase ? '#ff5252' : f.temp.seed === 'fg' ? '#35e0c0' : '#fff'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]); }
+    if (S.tool === 'area' && f.mode === 'poly' && f.pts && f.pts.length) {
+      const pts = p ? f.pts.concat([p.img]) : f.pts; T.path(pts, false); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      const [x0, y0] = toScr(f.pts[0][0], f.pts[0][1]); ctx.beginPath(); ctx.arc(x0, y0, 7, 0, 7); ctx.strokeStyle = '#f5b700'; ctx.lineWidth = 2; ctx.stroke();
+      for (const q of f.pts) { const [x, y] = toScr(q[0], q[1]); ctx.fillStyle = '#fff'; ctx.fillRect(x - 3, y - 3, 6, 6); }
+    }
+    if (S.tool === 'area' && f.mode === 'magnetic' && f.anchors && f.anchors.length) {
+      ctx.lineJoin = 'round';
+      for (const sg of f.segs) { T.path(sg, false); ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.stroke(); ctx.strokeStyle = '#35e0c0'; ctx.lineWidth = 2; ctx.stroke(); }
+      if (f.prevPath) { T.path(f.prevPath, false); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]); }
+      f.anchors.forEach((a, i) => { const [x, y] = toScr(a[0] + 0.5, a[1] + 0.5); ctx.beginPath(); ctx.arc(x, y, i ? 4 : 7, 0, 7); ctx.fillStyle = i ? '#35e0c0' : 'transparent'; ctx.fill(); ctx.strokeStyle = i ? '#000' : '#f5b700'; ctx.lineWidth = 2; ctx.stroke(); });
+    }
+    if (S.tool === 'area' && f.mode === 'click') { const o = selObj(); if (o && o.seeds) {
+      for (const [list, col] of [[o.seeds.fg, '#35e0c0'], [o.seeds.bg, '#ff5252']]) for (const st of list) {
+        if (st.length > 1) { T.path(st, false); ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke(); }
+        else { const [x, y] = toScr(st[0][0], st[0][1]); ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke(); }
+      }
+    } }
+    if (S.tool === 'persp' && f.pts && f.pts.length) {
+      const pts = f.pts.length === 4 ? MM.orderQuad(f.pts) : f.pts;
+      T.path(pts, pts.length === 4); ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.stroke(); ctx.strokeStyle = '#35e0c0'; ctx.lineWidth = 2; ctx.stroke();
+      if (pts.length === 4) { const [a, b] = [toScr(pts[0][0], pts[0][1]), toScr(pts[1][0], pts[1][1])]; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.strokeStyle = '#f5b700'; ctx.lineWidth = 4; ctx.stroke(); T.label((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 18, 'largura', '#f5b700'); }
+      for (const q of pts) { const [x, y] = toScr(q[0], q[1]); ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fillStyle = '#35e0c0'; ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke(); }
+    }
+    if (S.tool === 'colony') {
+      const o = selObj(), roi = f.temp && f.temp.type === 'ellipse' ? { cx: (f.temp.a[0] + f.temp.b[0]) / 2, cy: (f.temp.a[1] + f.temp.b[1]) / 2, rx: Math.abs(f.temp.b[0] - f.temp.a[0]) / 2, ry: Math.abs(f.temp.b[1] - f.temp.a[1]) / 2 } : (o && o.kind === 'colony' ? o.roi : f.roi);
+      if (roi) {
+        const [x, y] = toScr(roi.cx, roi.cy), rx = roi.rx * S.view.z, ry = roi.ry * S.view.z;
+        ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, 7); ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = '#f5b700'; ctx.lineWidth = 2.5; ctx.stroke();
+        for (const [hx, hy] of [[x + rx, y], [x - rx, y], [x, y + ry], [x, y - ry]]) { ctx.fillStyle = '#f5b700'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.rect(hx - 5, hy - 5, 10, 10); ctx.fill(); ctx.stroke(); }
+        ctx.beginPath(); ctx.moveTo(x - 8, y); ctx.lineTo(x + 8, y); ctx.moveTo(x, y - 8); ctx.lineTo(x, y + 8); ctx.strokeStyle = '#f5b700'; ctx.lineWidth = 2; ctx.stroke();
+        T.label(x, y - ry - 16, 'Placa', '#f5b700');
+      }
+      (f.samples || []).forEach((sm, i) => {
+        for (const ol of sm.outline || []) { T.path(ol, true); ctx.strokeStyle = '#000'; ctx.lineWidth = 5; ctx.stroke(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5; ctx.stroke(); }
+        const [x, y] = toScr(sm.x, sm.y); T.label(x, y - 24, `Exemplo ${i + 1}`, '#ffffff', true);
+      });
+    }
+    if (S.tool === 'edit' && f.brush && f.brush.startsWith('brush') && p && S.sel) {
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, S.brushPx, 0, 7); ctx.strokeStyle = (f.brush === 'brushAdd') !== !!p.alt ? '#fff' : '#ff5252'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+  }
+
+  /* ---------- faixa de instruções ---------- */
+  const step = (txt) => `<span class="step">${txt}</span>`;
+  const msg = (main, sub) => `<div class="msg">${main}${sub ? `<em>${sub}</em>` : ''}</div>`;
+  function renderGuide() {
+    const f = S.flow; let h = '';
+    if (!S.img) h = msg('Abra uma foto para começar.', 'Formatos aceitos: JPG, PNG, WebP, BMP, GIF.');
+    else if (!S.tool) h = S.scale ? msg('Escolha o que você quer medir na barra à esquerda.', 'Arraste com o botão direito ou segure Espaço para mover a imagem. Use a roda do mouse para zoom.') +
+      (S.photos.length > 1 ? `<div class="ctl"><button class="gbtn" data-a="scaleAll" title="As outras fotos passam a usar esta escala">Usar esta escala em todas as fotos</button>${S.lastPersp && S.photos[S.cur].canvas ? '<button class="gbtn" data-a="perspAll" title="Para fotos tiradas com a câmera fixa, na mesma posição">Corrigir as outras fotos do mesmo jeito</button>' : ''}</div>` : '')
+      : msg('Primeiro, defina a escala.', 'Clique em Escala e trace uma linha sobre a régua ou outro objeto de medida conhecida.') + `<div class="ctl"><button class="pbtn" data-a="goScale">Definir escala</button></div>`;
+    else if (S.tool === 'scale') {
+      if (f.stage === 'value') h = msg(`A linha tem ${nf(lineLen(f.line), 1)} pixels. Quanto ela mede de verdade?`) +
+        `<div class="ctl"><input type="number" id="gKnown" min="0" step="any" value="${S.scale ? S.scale.known : 1}"><select id="gUnit">${unitOpts(S.scale ? S.scale.unit : 'cm')}</select>
+         <button class="pbtn" data-a="scaleOk">Definir escala</button><button class="gbtn" data-a="scaleRedo">Traçar de novo</button></div>`;
+      else h = msg('Trace uma linha sobre o objeto de medida conhecida.', 'Por exemplo, de 0 a 10 cm na régua. Dê zoom para marcar as pontas com precisão.') +
+        (S.scale ? `<div class="ctl"><button class="gbtn" data-a="scaleClear">Remover escala</button></div>` : '');
+    } else if (S.tool === 'area') {
+      const modes = `<div class="seg">${[['click', 'Clicar no objeto'], ['magnetic', 'Contorno magnético'], ['free', 'Contornar à mão'], ['poly', 'Polígono']].map(([m, t]) => `<button data-a="mode" data-v="${m}" class="${f.mode === m ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+      const so = selObj(), canSeed = so && so.seeds;
+      const sub = {
+        free: 'Segure o botão e contorne a região. Ao soltar, a área é calculada.',
+        poly: 'Clique para marcar os cantos. Clique no primeiro ponto ou pressione Enter para fechar.',
+        magnetic: 'Clique num ponto da borda e vá clicando ao redor: a linha gruda sozinha na borda. Feche clicando no primeiro ponto ou com Enter. Backspace desfaz o último trecho.',
+        click: f.seed === 'fg' ? 'Clique ou risque sobre a parte do objeto que ficou de fora.' : f.seed === 'bg' ? 'Clique ou risque sobre o fundo que entrou por engano no contorno.' :
+          'Clique dentro do objeto. O contorno para na borda mais nítida entre o objeto e o fundo. Atalhos: Shift+clique marca objeto, Alt+clique marca fundo.',
+      }[f.mode];
+      const main = f.last ? `${f.last}. Meça a próxima região ou escolha outra ferramenta.` : 'Selecione a região que deseja saber a área.';
+      h = msg(main, sub) + `<div class="ctl">${modes}</div>` + (f.mode === 'click' ? `<div class="ctl">
+        <div class="seg">${[['new', 'Novo objeto'], ['fg', 'Marcar objeto'], ['bg', 'Marcar fundo']].map(([m, t]) => `<button data-a="seed" data-v="${m}" class="${(f.seed || 'new') === m ? 'on' : ''}" ${m !== 'new' && !canSeed ? 'disabled' : ''}>${t}</button>`).join('')}</div>
+        <label><input type="checkbox" id="gFill" ${S.fill ? 'checked' : ''}> Incluir furos</label></div>` : '') +
+        (so && so.kind === 'area' ? `<div class="ctl"><button class="gbtn" data-a="goEdit">Ajustar contorno</button></div>` : '');
+    } else if (S.tool === 'detect') {
+      const cnt = S.previewCount == null ? '…' : S.previewCount;
+      const minDisp = S.scale ? +(S.minArea * k() * k()).toPrecision(3) : S.minArea;
+      h = msg(`${cnt} objeto${cnt === 1 ? '' : 's'} encontrado${cnt === 1 ? '' : 's'}. Confira a marcação e clique em Medir.`, 'Se pegou fundo ou faltou parte, ajuste a sensibilidade. Depois você pode corrigir cada contorno em Ajustar contorno.') +
+        `<div class="ctl"><label>Sensibilidade <input type="range" id="gSens" min="1" max="100" value="${S.sens}"></label>
+        <label>Tamanho mínimo <input type="number" id="gMin" min="0" step="any" value="${minDisp}"> ${unit()}²</label></div>
+        <div class="ctl"><label><input type="checkbox" id="gFill" ${S.fill ? 'checked' : ''}> Incluir furos</label>
+        <label><input type="checkbox" id="gExcl" ${S.excl ? 'checked' : ''}> Ignorar objetos cortados na borda</label>
+        <label title="Coloca o contorno onde a borda é mais nítida, em vez de seguir só a cor"><input type="checkbox" id="gRefine" ${S.refine ? 'checked' : ''}> Refinar bordas</label>
+        <label title="Divide objetos que estão se tocando (como o Watershed do ImageJ)"><input type="checkbox" id="gSplit" ${S.split ? 'checked' : ''}> Separar objetos encostados</label>
+        <button class="pbtn" data-a="detectOk" ${!S.previewCount ? 'disabled' : ''}>Medir ${S.previewCount || ''} objetos</button>${S.photos.length > 1 ? `<button class="gbtn" data-a="detectAllPhotos">Medir em todas as ${S.photos.length} fotos</button>` : ''}</div>`;
+    } else if (S.tool === 'length' || S.tool === 'lw') {
+      const lw = S.tool === 'lw';
+      if (f.stage === 'ask') h = msg(lw ? 'De quantos objetos você quer o comprimento e a largura?' : 'Quantos objetos você quer medir o comprimento?', lw ? 'Para cada objeto você traça duas linhas. A maior vira o comprimento e a menor, a largura.' : 'Para cada objeto, você traça uma linha de ponta a ponta.') +
+        `<div class="ctl"><input type="number" id="gN" min="1" max="500" value="${f.n || 1}"><button class="pbtn" data-a="lenStart">Começar</button></div>`;
+      else if (f.stage === 'draw') {
+        const second = lw && f.first;
+        h = step(`Objeto ${f.i} de ${f.n}`) + msg(lw ? (second ? 'Agora trace a segunda medida, atravessando o objeto.' : 'Trace a primeira medida do objeto.') : 'Arraste do ponto inicial ao ponto final do objeto.',
+          lw ? 'Pode começar por qualquer uma: o programa decide qual é o comprimento e qual é a largura.' : 'Dê zoom para marcar as pontas com precisão. Esc cancela.') +
+          `<div class="ctl"><button class="gbtn" data-a="lenStop">Parar aqui</button></div>`;
+      } else h = msg(`Pronto: ${f.done} objeto${f.done === 1 ? '' : 's'} medido${f.done === 1 ? '' : 's'}.`, 'Os valores estão na tabela à direita. Para corrigir uma linha, use Mover e selecionar e arraste a ponta.') +
+        `<div class="ctl"><button class="pbtn" data-a="lenMore">Medir mais objetos</button><button class="gbtn" data-a="close">Concluir</button></div>`;
+    } else if (S.tool === 'count') {
+      const o = S.objs.find((x) => x.id === f.obj); const n = o ? o.points.length : 0;
+      h = `<span class="step">Total: ${n}</span>` + msg('Clique em cada item para contar.', 'Clique de novo sobre um item para desmarcar.') +
+        `<div class="ctl"><button class="gbtn" data-a="countNew">Nova contagem</button><button class="pbtn" data-a="close">Concluir</button></div>`;
+    } else if (S.tool === 'edit') {
+      const o = selObj();
+      if (!o || o.kind !== 'area') h = msg('Clique no objeto que você quer ajustar.', 'Funciona com áreas desenhadas ou detectadas.');
+      else h = msg(`Ajustando ${objName(o)}: ${fmtArea(measureArea(o).area)}`, 'Pincel e laço completam a parte que faltou. Borracha e laço de apagar removem o que passou. Segure Alt para inverter.') +
+        `<div class="ctl"><div class="seg">${[['brushAdd', 'Pincel: completar'], ['brushErase', 'Borracha'], ['lassoAdd', 'Laço: completar'], ['lassoErase', 'Laço: apagar']].map(([m, t]) => `<button data-a="brush" data-v="${m}" class="${f.brush === m ? 'on' : ''}">${t}</button>`).join('')}</div>
+        ${f.brush.startsWith('brush') ? `<label>Tamanho <input type="range" id="gBrush" min="3" max="80" value="${S.brushPx}"></label>` : ''}
+        <button class="pbtn" data-a="close">Concluir</button></div>`;
+    } else if (S.tool === 'persp') {
+      const ph = S.photos[S.cur], n = f.pts.length;
+      if (n < 4) h = step(`Canto ${n + 1} de 4`) + msg('Clique nos 4 cantos de um retângulo de medida conhecida.', 'Por exemplo, uma folha A4, um cartão ou um quadrado de referência, no mesmo plano dos objetos. Qualquer ordem. Backspace desfaz o último canto.') +
+        (ph && ph.orig ? `<div class="ctl"><button class="gbtn" data-a="perspUndo">Desfazer correção desta foto</button></div>` : '');
+      else h = msg('Quanto mede o retângulo?', 'Largura é o lado marcado em amarelo; altura, o lado ao lado dele. A foto fica endireitada e a escala, definida.') +
+        `<div class="ctl"><label>Largura <input type="number" id="gPW" min="0" step="any" value="${f.w || ''}"></label><label>Altura <input type="number" id="gPH" min="0" step="any" value="${f.h || ''}"></label>
+         <select id="gPU">${unitOpts(f.u || 'cm')}</select></div>
+         <div class="ctl"><button class="gbtn" data-a="perspPreset" data-v="a4">Folha A4</button><button class="gbtn" data-a="perspPreset" data-v="carta">Folha Carta</button>
+         <button class="pbtn" data-a="perspOk">Corrigir foto</button><button class="gbtn" data-a="perspRedo">Marcar de novo</button></div>`;
+    } else if (S.tool === 'colony') {
+      const o = selObj(), col = o && o.kind === 'colony' ? o : null;
+      if (f.mode === 'roi') h = msg('Arraste de um canto ao outro da placa para marcar a área de busca.', 'Só o que estiver dentro da elipse é contado. Isso evita marcar a borda da placa e reflexos.') + `<div class="ctl"><button class="gbtn" data-a="colRoiCancel">Cancelar</button></div>`;
+      else if (!col) {
+        const n = (f.samples || []).length;
+        h = step(`Exemplo ${n + 1} de 3`) + msg('Clique numa colônia típica.', 'Escolha 3 colônias que representem as da placa, de preferência com tamanhos e tons diferentes. O programa junta as características das três e marca todas as outras. Para mexer na placa, arraste dentro dela ou puxe a borda.') +
+          `<div class="ctl">${n ? `<button class="pbtn" data-a="colGo">Contar com ${n} exemplo${n > 1 ? 's' : ''}</button><button class="gbtn" data-a="colUndoSample">Desfazer último exemplo</button>` : ''}
+           <button class="gbtn" data-a="colPlate">${f.roi ? 'Detectar placa de novo' : 'Detectar placa'}</button><button class="gbtn" data-a="colRoi">Desenhar a placa</button>${f.roi ? '<button class="gbtn" data-a="colNoPlate">Contar na foto inteira</button>' : ''}</div>`;
+      } else if (f.mode === 'example') h = msg('Clique em mais uma colônia de referência.', 'Use para ensinar um tipo de colônia que ficou de fora.') + '<div class="ctl"><button class="gbtn" data-a="colExampleCancel">Cancelar</button></div>';
+      else {
+        const it = colonyItems(col), N = it.reduce((a, i) => a + i.n, 0), P = col.params;
+        h = `<span class="step">${N} colônia${N === 1 ? '' : 's'}</span>` + msg('Confira as marcações.', 'Clique numa marcação errada para apagar ou num ponto sem marcação para adicionar. ×2, ×3 são colônias encostadas contadas pelo tamanho. A placa pode ser arrastada ou redimensionada pela borda; a contagem é refeita.') +
+          `<div class="ctl"><label title="Quanto a cor pode variar">Cor <input type="range" id="gCTol" min="1" max="6" step="0.25" value="${P.tol}"></label>
+           <label title="Quanto o tamanho pode variar em relação ao exemplo">Tamanho <input type="range" id="gCSize" min="1.5" max="8" step="0.5" value="${P.size}"></label>
+           <label title="Mais à direita aceita formatos menos redondos">Formato <input type="range" id="gCShape" min="0.05" max="0.6" step="0.05" value="${P.shape}"></label>
+           <label><input type="checkbox" id="gCClu" ${P.clusters ? 'checked' : ''}> Dividir colônias encostadas</label></div>
+           <div class="ctl"><button class="gbtn" data-a="colExample">Adicionar outro exemplo</button><button class="gbtn" data-a="colPlate">Detectar placa de novo</button><button class="gbtn" data-a="colRoi">Desenhar a placa</button>
+           <button class="gbtn" data-a="colNew">Nova placa</button>${S.photos.length > 1 ? `<button class="gbtn" data-a="colAllPhotos" title="Usa os mesmos exemplos e ajustes; a placa é detectada em cada foto">Contar em todas as ${S.photos.length} fotos</button>` : ''}<button class="pbtn" data-a="close">Concluir</button></div>`;
+      }
+    } else if (S.tool === 'select') h = msg('Clique numa medição para selecionar. Arraste as pontas das linhas para corrigir.', 'Delete apaga a medição selecionada. Arrastar no vazio move a imagem.');
+    // no celular as explicações ficam recolhidas atrás do botão "?"
+    if (/<em>/.test(h)) h = h.replace('<div class="msg">', '<button class="tips" data-a="tips" title="Mostrar explicação" aria-label="Mostrar explicação">?</button><div class="msg">');
+    guide.innerHTML = h;
+    bindGuide();
+  }
+  const selObj = () => S.objs.find((o) => o.id === S.sel);
+
+  function bindGuide() {
+    guide.querySelectorAll('[data-a]').forEach((b) => b.onclick = () => action(b.dataset.a, b.dataset.v));
+    const on = (id, ev, fn) => { const e = $(id); if (e) e.addEventListener(ev, fn); };
+    on('gKnown', 'keydown', (e) => { if (e.key === 'Enter') action('scaleOk'); });
+    on('gN', 'keydown', (e) => { if (e.key === 'Enter') action('lenStart'); });
+    if ($('gKnown')) setTimeout(() => $('gKnown').select(), 0);
+    if ($('gN')) setTimeout(() => $('gN').select(), 0);
+    on('gSens', 'input', (e) => { S.sens = +e.target.value; if (S.tool === 'detect') updatePreview(false); });
+    on('gSens', 'change', () => { if (S.tool === 'detect') updatePreview(true); });
+    on('gFill', 'change', (e) => { S.fill = e.target.checked; const o = selObj(); if (S.tool === 'area' && o && o.seeds) resegment(o, true); });
+    on('gExcl', 'change', (e) => { S.excl = e.target.checked; updatePreview(true); });
+    on('gRefine', 'change', (e) => { S.refine = e.target.checked; });
+    on('gSplit', 'change', (e) => { S.split = e.target.checked; updatePreview(true); });
+    on('gMin', 'change', (e) => { const v = Math.max(0, +e.target.value || 0); S.minArea = Math.round(S.scale ? v / (k() * k()) : v); updatePreview(true); });
+    on('gBrush', 'input', (e) => { S.brushPx = +e.target.value; render(); });
+    const colParam = (id, key, cast) => on(id, 'change', (e) => { const o = selObj(); if (o && o.kind === 'colony') { pushUndo(); o.params[key] = cast(e.target); recomputeColonies(o); } });
+    colParam('gCTol', 'tol', (t) => +t.value); colParam('gCSize', 'size', (t) => +t.value); colParam('gCShape', 'shape', (t) => +t.value); colParam('gCClu', 'clusters', (t) => t.checked);
+    on('gPW', 'input', (e) => { S.flow.w = e.target.value; }); on('gPH', 'input', (e) => { S.flow.h = e.target.value; }); on('gPU', 'change', (e) => { S.flow.u = e.target.value; });
+    on('gPH', 'keydown', (e) => { if (e.key === 'Enter') action('perspOk'); });
+    if ($('gPW') && !$('gPW').value) setTimeout(() => $('gPW').focus(), 0);
+  }
+
+  function action(a, v) {
+    const f = S.flow;
+    switch (a) {
+      case 'goScale': setTool('scale'); break;
+      case 'tips': guide.classList.toggle('open'); break;
+      case 'scaleAll': {
+        stash(); let n = 0;
+        S.photos.forEach((p, i) => { if (i !== S.cur && !(p.canvas)) { p.scale = { ...S.scale, line: null, inherited: false, shared: true }; n++; } });
+        S.lastScale = { ...S.scale }; toast(n ? `Escala aplicada a ${n} foto(s). Fotos com perspectiva corrigida mantêm a própria escala.` : 'Nenhuma outra foto para aplicar.'); scheduleSave(); break;
+      }
+      case 'perspAll': runBatch('perspAll'); break;
+      case 'detectAllPhotos': runBatch('detect'); break;
+      case 'colAllPhotos': runBatch('colony'); break;
+      case 'goEdit': setTool('edit'); break;
+      case 'close': setTool(null); break;
+      case 'scaleRedo': S.flow = { stage: 'draw' }; renderGuide(); render(); break;
+      case 'scaleClear': pushUndo(); S.scale = null; refreshAll(); toast('Escala removida. Resultados em pixels.'); break;
+      case 'scaleOk': {
+        const known = parseFloat(String($('gKnown').value).replace(',', '.'));
+        if (!(known > 0)) { toast('Digite um valor maior que zero.'); return; }
+        pushUndo(); S.scale = { ppu: lineLen(f.line) / known, unit: $('gUnit').value, known, line: f.line.slice() }; S.dispUnit = S.scale.unit; S.lastScale = { ...S.scale };
+        toast(`Escala definida: 1 ${S.scale.unit} = ${nf(S.scale.ppu, 2)} pixels`); setTool(null); refreshAll(); break;
+      }
+      case 'mode': S.flow = { mode: v, pts: [] }; S.prefMode = v; if (v === 'magnetic' || v === 'click') later(() => ensureGrad()); renderGuide(); render(); break;
+      case 'seed': f.seed = v === 'new' ? null : v; renderGuide(); break;
+      case 'brush': f.brush = v; renderGuide(); render(); break;
+      case 'detectOk': later(() => {
+        const masks = MM.detectAll(ensureDet(), S.W, S.H, detectOpts());
+        pushUndo(); for (const m of masks) addObj({ kind: 'area', method: 'detect', mask: m, poly: null });
+        toast(`${masks.length} objetos medidos.`); setTool(null); refreshAll();
+      }); break;
+      case 'lenStart': { const n = Math.max(1, Math.min(500, parseInt($('gN').value) || 1)); S.flow = { stage: 'draw', n, i: 1, done: 0, first: null }; renderGuide(); break; }
+      case 'lenStop': S.flow = { stage: 'done', done: f.done }; renderGuide(); render(); break;
+      case 'lenMore': S.flow = { stage: 'ask', n: f.n }; renderGuide(); break;
+      case 'countNew': S.flow = { obj: null }; renderGuide(); break;
+      case 'perspRedo': S.flow = { pts: [] }; renderGuide(); render(); break;
+      case 'perspPreset': { // escolhe a orientação pelo formato do quadrilátero marcado
+        const q = MM.orderQuad(f.pts), e2 = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const wide = e2(q[0], q[1]) + e2(q[3], q[2]) >= e2(q[0], q[3]) + e2(q[1], q[2]);
+        const [A, B] = v === 'a4' ? [29.7, 21] : [27.94, 21.59];
+        f.w = wide ? A : B; f.h = wide ? B : A; f.u = 'cm'; renderGuide(); break;
+      }
+      case 'perspOk': {
+        const w = parseFloat(String($('gPW').value).replace(',', '.')), hh = parseFloat(String($('gPH').value).replace(',', '.')), u = $('gPU').value;
+        if (!(w > 0 && hh > 0)) { toast('Digite a largura e a altura do retângulo.'); return; }
+        if (S.objs.length && !confirm('Corrigir a perspectiva muda as coordenadas da foto, então as medições desta foto serão apagadas. Continuar?')) return;
+        later(() => {
+          const r = MM.rectify(S.rgba, S.W, S.H, MM.orderQuad(f.pts), w, hh);
+          if (!r) { toast('Os 4 cantos não formam um retângulo válido. Marque de novo.'); return; }
+          const c = document.createElement('canvas'); c.width = r.W; c.height = r.H; c.getContext('2d').putImageData(new ImageData(r.rgba, r.W, r.H), 0, 0);
+          const ph = S.photos[S.cur]; if (!ph.orig) ph.orig = S.imgCanvas; ph.canvas = c; ph.imgDirty = true;
+          S.objs = []; S.seq = { area: 0, length: 0, lw: 0, count: 0, colony: 0 }; S.undo = []; S.redo = []; S.sel = null;
+          S.scale = { ppu: r.ppu, unit: u, known: w, line: [r.rect[0], r.rect[1], r.rect[2], r.rect[1]] }; S.lastScale = { ...S.scale }; S.dispUnit = u;
+          S.lastPersp = { quad: MM.orderQuad(f.pts).map((q) => q.slice()), w, h: hh, u, W: S.W, H: S.H };
+          setImage(c, null); toast(`Foto corrigida. Escala definida pelo retângulo: 1 ${u} = ${nf(r.ppu, 2)} px.`);
+        });
+        break;
+      }
+      case 'perspUndo': {
+        const ph = S.photos[S.cur]; if (!ph || !ph.orig) return;
+        if (S.objs.length && !confirm('Desfazer a correção apaga as medições desta foto. Continuar?')) return;
+        ph.canvas = null; ph.orig = null; ph.imgDirty = true; S.objs = []; S.undo = []; S.redo = []; S.scale = null;
+        later(() => { decode(ph).then((c) => { setImage(c, null); toast('Correção desfeita. Defina a escala de novo.'); }); });
+        break;
+      }
+      case 'colRoi': f.mode = 'roi'; renderGuide(); break;
+      case 'colRoiCancel': f.mode = null; renderGuide(); break;
+      case 'colExample': f.mode = 'example'; renderGuide(); break;
+      case 'colExampleCancel': f.mode = null; renderGuide(); break;
+      case 'colNew': S.sel = null; S.flow = { roi: null, samples: [] }; detectPlateInto(S.flow, false); renderGuide(); render(); break;
+      case 'colPlate': detectPlateInto(f, false); break;
+      case 'colNoPlate': { const o = selObj(); if (o && o.kind === 'colony') { pushUndo(); o.roi = null; recomputeColonies(o); } else { f.roi = null; refreshAll(); } break; }
+      case 'colGo': colonyCreate(); break;
+      case 'colUndoSample': f.samples = f.samples.slice(0, -1); refreshAll(); break;
+    }
+  }
+
+  function setTool(t) {
+    if (!S.img) return;
+    if (S.tool === 'edit') S.objs = S.objs.filter((o) => o.kind !== 'area' || o.mask.w > 0);
+    S.tool = t; S.preview = null;
+    if (t === 'scale') S.flow = { stage: 'draw' };
+    else if (t === 'area') { S.flow = { mode: S.prefMode || 'click', pts: [] }; later(() => ensureGrad()); }
+    else if (t === 'length' || t === 'lw') S.flow = { stage: 'ask', n: 1 };
+    else if (t === 'count') S.flow = { obj: null };
+    else if (t === 'persp') S.flow = { pts: [] };
+    else if (t === 'colony') {
+      const o = selObj(); S.flow = { roi: null, samples: [] };
+      if (!(o && o.kind === 'colony')) { S.sel = null; detectPlateInto(S.flow, false); }
+      later(() => { ensureGrad(); ensureBlur(); });
+    }
+    else if (t === 'edit') S.flow = { brush: 'brushAdd' };
+    else if (t === 'detect') { S.flow = {}; S.previewCount = null; later(() => { ensureDet(); updatePreview(true); }); }
+    else S.flow = {};
+    document.querySelectorAll('.tool').forEach((b) => { b.classList.toggle('active', b.dataset.tool === t); b.classList.remove('pulse'); if (b.dataset.tool === t && matchMedia('(max-width: 820px)').matches) b.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); });
+    cv.style.cursor = !t || t === 'select' ? 'grab' : 'crosshair';
+    renderGuide(); render();
+  }
+
+  /* ---------- detecção ---------- */
+  let prevT;
+  function updatePreview(withCount) {
+    const det = ensureDet(), t = thresholdFromSens();
+    if (!S.preview) { S.preview = document.createElement('canvas'); S.preview.width = S.W; S.preview.height = S.H; S.previewData = S.preview.getContext('2d').createImageData(S.W, S.H); }
+    const d = S.previewData.data, img = det.img;
+    for (let i = 0, j = 0; i < img.length; i++, j += 4) { if (img[i] > t) d[j + 3] = 0; else { d[j] = 8; d[j + 1] = 14; d[j + 2] = 18; d[j + 3] = 175; } }
+    S.preview.getContext('2d').putImageData(S.previewData, 0, 0); render();
+    if (withCount) { clearTimeout(prevT); prevT = setTimeout(() => later(() => {
+      S.previewCount = MM.detectAll(det, S.W, S.H, { threshold: t, minArea: S.minArea, fillHoles: S.split, excludeEdges: S.excl, split: S.split }).length; if (S.tool === 'detect') renderGuide();
+    }), 60); }
+  }
+  /* ---------- lote: repetir a mesma operação em todas as fotos ---------- */
+  const detectOpts = () => ({ threshold: thresholdFromSens(), minArea: S.minArea, fillHoles: S.fill, excludeEdges: S.excl, grad: S.refine ? ensureGrad() : null, split: S.split });
+  async function runBatch(kind) {
+    const n = S.photos.length, back = S.cur, label = { detect: 'Medindo', colony: 'Contando', perspAll: 'Corrigindo' }[kind];
+    if (kind === 'perspAll' && !confirm('Isso endireita todas as outras fotos com os mesmos 4 cantos (vale para câmera fixa, na mesma posição). As medições dessas fotos serão apagadas. Continuar?')) return;
+    if (kind !== 'perspAll' && !confirm(`Isso ${kind === 'detect' ? 'mede os objetos' : 'conta as colônias'} em todas as ${n} fotos com os ajustes atuais e acrescenta as medições a cada uma. Continuar?`)) return;
+    // parâmetros fixados a partir da foto atual
+    const minPhys = S.scale ? S.minArea * k() * k() : null, sens = S.sens;
+    const col = selObj(), colTpl = kind === 'colony' && col && col.kind === 'colony' ? { models: col.models.slice(), params: { ...col.params }, plate: !!col.roi } : null;
+    const P = S.lastPersp; let done = 0, skipped = 0, found = 0;
+    setTool(null);
+    for (let i = 0; i < n; i++) {
+      if (i === back && kind !== 'perspAll') { if (kind === 'detect') { /* foto atual: mede também */ } else continue; }
+      if (kind === 'perspAll' && i === back) continue;
+      $('busy').textContent = `${label} foto ${i + 1} de ${n}…`;
+      await openPhoto(i); busy(true);
+      await new Promise((r) => setTimeout(r, 15));
+      if (kind === 'perspAll') {
+        if (S.W !== P.W || S.H !== P.H) { skipped++; continue; }
+        const r = MM.rectify(S.rgba, S.W, S.H, P.quad, P.w, P.h); if (!r) { skipped++; continue; }
+        const c = canvasFromRGBA(r.W, r.H, r.rgba), ph = S.photos[i]; ph.orig = true; ph.canvas = c; ph.imgDirty = true;
+        S.objs = []; S.undo = []; S.redo = []; S.scale = { ppu: r.ppu, unit: P.u, known: P.w, line: [r.rect[0], r.rect[1], r.rect[2], r.rect[1]] };
+        setImage(c, null); done++;
+      } else if (kind === 'detect') {
+        S.sens = sens; if (minPhys != null && S.scale) S.minArea = Math.max(1, Math.round(minPhys / (k() * k())));
+        const masks = MM.detectAll(ensureDet(), S.W, S.H, detectOpts());
+        if (masks.length) { pushUndo(); for (const m of masks) addObj({ kind: 'area', method: 'detect', mask: m, poly: null }); }
+        found += masks.length; done++;
+      } else if (kind === 'colony' && colTpl) {
+        let roi = null; if (colTpl.plate) { const c = MM.detectPlate(S.rgba, S.W, S.H); if (!c) { skipped++; stash(); continue; } roi = { cx: c.cx, cy: c.cy, rx: c.r, ry: c.r }; }
+        const o = addObj({ kind: 'colony', models: colTpl.models, auto: [], removed: [], added: [], roi, params: { ...colTpl.params } });
+        o.auto = MM.findColonies(ensureBlur(), S.W, S.H, o.models, { tol: o.params.tol, minF: 1 / o.params.size, maxF: o.params.size, circTol: o.params.shape, clusters: o.params.clusters, roi });
+        found += colonyItems(o).reduce((a, it) => a + it.n, 0); done++;
+      }
+      stash();
+    }
+    await openPhoto(back); busy(false); $('busy').textContent = 'Processando…';
+    toast(kind === 'perspAll' ? `${done} foto(s) corrigida(s)${skipped ? `; ${skipped} com tamanho diferente ficaram como estavam` : ''}.`
+      : kind === 'detect' ? `${found} objetos medidos em ${done} fotos. Confira cada foto pelas setas no topo.` : `${found} colônias contadas em ${done} outras fotos${skipped ? ` (${skipped} sem placa foram puladas)` : ''}. Confira cada foto pelas setas no topo.`);
+    scheduleSave(true);
+  }
+
+  /* ---------- criação de medições ---------- */
+  function finishArea(pts, method) {
+    if (pts.length < 3) return;
+    const mask = MM.cropMask(MM.rasterPolygon(pts, S.W, S.H));
+    if (!MM.maskCount(mask)) { toast('A região ficou pequena demais. Tente de novo.'); return; }
+    pushUndo(); const o = addObj({ kind: 'area', method, mask, poly: pts.map((p) => p.slice()) });
+    S.sel = o.id; S.flow.last = `${objName(o)} medida: ${fmtArea(measureArea(o).area)}`; refreshAll();
+  }
+  // Segmenta pelo gradiente (watershed com marcas de objeto e de fundo).
+  function segment(seeds) { return MM.segmentSeeds(ensureGrad(), S.W, S.H, seeds.fg, seeds.bg, { fillHoles: S.fill }); }
+  function clickDetect(stroke) {
+    later(() => {
+      const seeds = { fg: [stroke], bg: [] }, m = segment(seeds);
+      if (!MM.maskCount(m)) { toast('Não encontrei um objeto aqui. Clique bem dentro dele.'); return; }
+      pushUndo(); const o = addObj({ kind: 'area', method: 'detect', mask: m, poly: null, seeds });
+      S.sel = o.id; S.flow.last = `${objName(o)} medida: ${fmtArea(measureArea(o).area)}`;
+      if (m.w >= S.W - 2 && m.h >= S.H - 2) toast('O contorno pegou a imagem toda. Use Marcar fundo para indicar o que não é objeto.');
+      refreshAll();
+    });
+  }
+  function addSeed(o, kind, stroke) {
+    later(() => { pushUndo(); o.seeds[kind].push(stroke); resegment(o, false); });
+  }
+  function resegment(o, withUndo) {
+    later(() => {
+      if (withUndo) pushUndo();
+      o.mask = segment(o.seeds); o.edited = false; o.poly = null;
+      S.flow.last = `${objName(o)} medida: ${fmtArea(measureArea(o).area)}`; refreshAll();
+    });
+  }
+  function finishLine(l) {
+    const f = S.flow;
+    if (S.tool === 'scale') { S.flow = { stage: 'value', line: l }; renderGuide(); render(); return; }
+    if (S.tool === 'length') { pushUndo(); const o = addObj({ kind: 'length', line: l }); S.sel = o.id; f.done++; }
+    else if (S.tool === 'lw') {
+      if (!f.first) { f.first = l; renderGuide(); render(); return; }
+      pushUndo(); const o = addObj({ kind: 'lw', lines: [f.first, l] }); S.sel = o.id; f.first = null; f.done++;
+    }
+    f.i++; if (f.i > f.n) S.flow = { stage: 'done', done: f.done, n: f.n };
+    refreshAll();
+  }
+
+  /* ---------- testes de clique ---------- */
+  const distSeg = (px, py, l) => { const dx = l[2] - l[0], dy = l[3] - l[1], L2 = dx * dx + dy * dy; let t = L2 ? ((px - l[0]) * dx + (py - l[1]) * dy) / L2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - l[0] - t * dx, py - l[1] - t * dy); };
+  function hitHandle(sx, sy) {
+    const near = (x, y) => { const [a, b] = toScr(x, y); return Math.hypot(a - sx, b - sy) < 9; };
+    for (let i = S.objs.length - 1; i >= 0; i--) {
+      const o = S.objs[i], ls = o.kind === 'length' ? [o.line] : o.kind === 'lw' ? o.lines : [];
+      for (const l of ls) { if (near(l[0], l[1])) return { o, l, e: 0 }; if (near(l[2], l[3])) return { o, l, e: 2 }; }
+    }
+    if (S.scale && S.scale.line) { const l = S.scale.line; if (near(l[0], l[1])) return { scale: true, l, e: 0 }; if (near(l[2], l[3])) return { scale: true, l, e: 2 }; }
+    return null;
+  }
+  function hitObj(x, y) {
+    const tol = 8 / S.view.z;
+    for (let i = S.objs.length - 1; i >= 0; i--) {
+      const o = S.objs[i];
+      if (o.kind === 'length' && distSeg(x, y, o.line) < tol) return o;
+      if (o.kind === 'lw' && o.lines.some((l) => distSeg(x, y, l) < tol)) return o;
+      if (o.kind === 'count' && o.points.some((p) => Math.hypot(p[0] - x, p[1] - y) < tol * 1.3)) return o;
+      if (o.kind === 'colony' && colonyItems(o).some((i) => Math.hypot(i.x - x, i.y - y) < i.r + tol)) return o;
+    }
+    for (let i = S.objs.length - 1; i >= 0; i--) {
+      const o = S.objs[i]; if (o.kind !== 'area') continue; const m = o.mask, ix = Math.floor(x) - m.x, iy = Math.floor(y) - m.y;
+      if (ix >= 0 && iy >= 0 && ix < m.w && iy < m.h && m.data[iy * m.w + ix]) return o;
+    }
+    return null;
+  }
+
+  /* ---------- ponteiro ---------- */
+  const evPos = (e) => { const r = cv.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top, [x, y] = toImg(sx, sy); return { sx, sy, x, y, img: [x, y], alt: e.altKey }; };
+  const clampImg = (p) => [Math.max(0, Math.min(S.W, p.x)), Math.max(0, Math.min(S.H, p.y))];
+
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  // ---- toque: um dedo espera mover 8 px (arrastar) ou soltar (toque); dois dedos = pinça para zoom e mover
+  const touches = new Map(); let pinch = null, pendingTouch = null;
+  cv.addEventListener('pointerdown', (e) => {
+    if (!S.img) return; cv.setPointerCapture(e.pointerId);
+    if (e.pointerType === 'touch') {
+      touches.set(e.pointerId, evPos(e));
+      if (touches.size === 2) { // começa a pinça e cancela o que o primeiro dedo começou
+        pendingTouch = null; if (S.drag && S.drag.type !== 'pan') { S.drag = null; S.flow.temp = null; } S.drag = null;
+        const [a, b] = [...touches.values()]; pinch = { d0: Math.hypot(a.sx - b.sx, a.sy - b.sy), z0: S.view.z, m0: [(a.sx + b.sx) / 2, (a.sy + b.sy) / 2], ox: S.view.ox, oy: S.view.oy }; render(); return;
+      }
+      if (touches.size > 2) return;
+      pendingTouch = { e: { button: 0, altKey: false, shiftKey: false, pointerType: 'touch' }, p: evPos(e) }; return;
+    }
+    handleDown(e, evPos(e));
+  });
+  function handleDown(e, p) {
+    const f = S.flow; S.pointer = p;
+    const pan = () => { S.drag = { type: 'pan', sx: p.sx, sy: p.sy, ox: S.view.ox, oy: S.view.oy }; cv.style.cursor = 'grabbing'; };
+    if (e.button === 1 || e.button === 2 || S.space) return pan();
+    const t = S.tool;
+    if (!t || t === 'select') {
+      const h = hitHandle(p.sx, p.sy);
+      if (h) { pushUndo(); S.drag = { type: 'handle', h }; if (h.o) S.sel = h.o.id; refreshAll(); return; }
+      const o = hitObj(p.x, p.y); if (o) { S.sel = o.id; refreshAll(); return; }
+      S.sel = null; refreshAll(); return pan();
+    }
+    if (t === 'scale' || ((t === 'length' || t === 'lw') && f.stage === 'draw')) {
+      const [x, y] = clampImg(p); f.temp = { type: 'line', l: [x, y, x, y] }; S.drag = { type: 'line' }; return;
+    }
+    if (t === 'area') {
+      if (f.mode === 'free') { f.temp = { type: 'free', pts: [clampImg(p)] }; S.drag = { type: 'free' }; }
+      else if (f.mode === 'poly') {
+        const q = clampImg(p);
+        if (f.pts.length >= 3) { const [x0, y0] = toScr(f.pts[0][0], f.pts[0][1]); if (Math.hypot(x0 - p.sx, y0 - p.sy) < 10) { const pts = f.pts; f.pts = []; finishArea(pts, 'poly'); return; } }
+        f.pts.push(q); render();
+      } else if (f.mode === 'click') {
+        if (p.x < 0 || p.y < 0 || p.x >= S.W || p.y >= S.H) return;
+        let kind = e.altKey ? 'bg' : e.shiftKey ? 'fg' : (f.seed || 'new');
+        const o = selObj(); if (kind !== 'new' && !(o && o.seeds)) kind = 'new';
+        f.temp = { type: 'free', pts: [clampImg(p)], erase: kind === 'bg', seed: kind }; S.drag = { type: 'seed', kind };
+      } else if (f.mode === 'magnetic') magClick(p);
+      return;
+    }
+    if (t === 'persp') {
+      if (f.pts.length >= 4) return;
+      f.pts.push(clampImg(p)); renderGuide(); render(); return;
+    }
+    if (t === 'colony') {
+      const o = selObj(), col = o && o.kind === 'colony' ? o : null, roi = col ? col.roi : f.roi;
+      if (f.mode === 'roi') { const [x, y] = clampImg(p); f.temp = { type: 'ellipse', a: [x, y], b: [x, y] }; S.drag = { type: 'ellipse' }; return; }
+      if (roi) { // editar a placa: borda = redimensionar, dentro = arrastar para mover (um toque/clique continua marcando)
+        const [cx, cy] = toScr(roi.cx, roi.cy), z = S.view.z, rr = Math.hypot((p.sx - cx) / (roi.rx * z), (p.sy - cy) / (roi.ry * z));
+        if (Math.abs(rr - 1) * Math.min(roi.rx, roi.ry) * z < 12) { S.drag = { type: 'plateResize', p0: p, roi, col, d0: Math.max(1, Math.hypot(p.sx - cx, p.sy - cy)), rx0: roi.rx, ry0: roi.ry }; return; }
+        if (rr < 1) { S.drag = { type: 'platePending', roi, col, p0: p, ox: roi.cx, oy: roi.cy }; return; }
+      }
+      colonyClick(p); return;
+    }
+    if (t === 'count') {
+      if (p.x < 0 || p.y < 0 || p.x >= S.W || p.y >= S.H) return;
+      let o = S.objs.find((x) => x.id === f.obj);
+      pushUndo();
+      if (!o) { o = addObj({ kind: 'count', points: [] }); f.obj = o.id; }
+      const tol = 10 / S.view.z, i = o.points.findIndex((q) => Math.hypot(q[0] - p.x, q[1] - p.y) < tol);
+      if (i >= 0) o.points.splice(i, 1); else o.points.push([p.x, p.y]);
+      S.sel = o.id; refreshAll(); return;
+    }
+    if (t === 'edit') {
+      const o = selObj();
+      if (!o || o.kind !== 'area') { const h = hitObj(p.x, p.y); if (h && h.kind === 'area') { S.sel = h.id; refreshAll(); } else toast('Clique sobre uma área medida.'); return; }
+      pushUndo();
+      const add = (f.brush === 'brushAdd' || f.brush === 'lassoAdd') !== e.altKey;
+      if (f.brush.startsWith('lasso')) { f.temp = { type: 'free', pts: [clampImg(p)], erase: !add }; S.drag = { type: 'lasso', add }; }
+      else { S.drag = { type: 'brush', add, last: [p.x, p.y] }; paint(o, p.x, p.y, p.x, p.y, add); }
+    }
+  }
+  // ---------- contorno magnético
+  const wireR = () => Math.max(80, Math.min(600, Math.round(380 / S.view.z)));
+  function magStart(x, y) { const f = S.flow; f.wire = MM.liveWire(ensureGrad(), S.W, S.H, x, y, wireR()); }
+  function magPath(tx, ty) {
+    const f = S.flow, a = f.anchors[f.anchors.length - 1];
+    return (f.wire && f.wire.path(tx, ty)) || [[a[0] + 0.5, a[1] + 0.5], [tx + 0.5, ty + 0.5]];
+  }
+  function magClick(p) {
+    const f = S.flow, g = ensureGrad(), snapR = Math.max(2, Math.round(5 / S.view.z));
+    if (!f.anchors || !f.anchors.length) {
+      const [x, y] = MM.snapEdge(g, S.W, S.H, Math.min(S.W - 1, Math.max(0, p.x)), Math.min(S.H - 1, Math.max(0, p.y)), snapR);
+      f.anchors = [[x, y]]; f.segs = []; f.prevPath = null; later(() => { magStart(x, y); render(); }); return;
+    }
+    const [x0, y0] = toScr(f.anchors[0][0] + 0.5, f.anchors[0][1] + 0.5);
+    if (f.anchors.length >= 2 && Math.hypot(x0 - p.sx, y0 - p.sy) < 10) return magClose();
+    const [x, y] = MM.snapEdge(g, S.W, S.H, Math.min(S.W - 1, Math.max(0, p.x)), Math.min(S.H - 1, Math.max(0, p.y)), snapR);
+    f.segs.push(magPath(x, y)); f.anchors.push([x, y]); f.prevPath = null;
+    later(() => { magStart(x, y); render(); });
+  }
+  function magPreview(p) { const f = S.flow; if (!f.anchors || !f.anchors.length) return; f.prevPath = magPath(Math.min(S.W - 1, Math.max(0, Math.round(p.x))), Math.min(S.H - 1, Math.max(0, Math.round(p.y)))); }
+  function magClose() {
+    const f = S.flow; if (!f.anchors || f.anchors.length < 2) return;
+    f.segs.push(magPath(f.anchors[0][0], f.anchors[0][1]));
+    const pts = []; for (const sg of f.segs) for (const q of sg) { const l = pts[pts.length - 1]; if (!l || l[0] !== q[0] || l[1] !== q[1]) pts.push(q); }
+    f.anchors = []; f.segs = []; f.wire = null; f.prevPath = null;
+    finishArea(pts, 'magnetic');
+  }
+  function magUndo() {
+    const f = S.flow; if (!f.anchors || !f.anchors.length) return;
+    f.anchors.pop(); f.segs.pop(); f.prevPath = null;
+    if (f.anchors.length) { const a = f.anchors[f.anchors.length - 1]; later(() => { magStart(a[0], a[1]); render(); }); } else { f.wire = null; render(); }
+  }
+  function paint(o, ax, ay, bx, by, add) {
+    const r = S.brushPx / S.view.z, st = MM.strokeMask(ax, ay, bx, by, r, S.W, S.H);
+    o.mask = MM.combine(o.mask, st, add, S.W, S.H); o.poly = null; o.edited = true; render();
+  }
+  cv.addEventListener('pointermove', (e) => {
+    if (!S.img) return; const p = evPos(e);
+    if (e.pointerType === 'touch') {
+      if (!touches.has(e.pointerId)) return; touches.set(e.pointerId, p);
+      if (pinch && touches.size >= 2) {
+        const [a, b] = [...touches.values()], d2 = Math.hypot(a.sx - b.sx, a.sy - b.sy), m = [(a.sx + b.sx) / 2, (a.sy + b.sy) / 2];
+        const z = Math.max(0.02, Math.min(40, pinch.z0 * d2 / Math.max(1, pinch.d0))), ix = (pinch.m0[0] - pinch.ox) / pinch.z0, iy = (pinch.m0[1] - pinch.oy) / pinch.z0;
+        S.view = { z, ox: m[0] - ix * z, oy: m[1] - iy * z }; render(); return;
+      }
+      if (pendingTouch) {
+        if (Math.hypot(p.sx - pendingTouch.p.sx, p.sy - pendingTouch.p.sy) < 8) return;
+        const pt = pendingTouch; pendingTouch = null; handleDown(pt.e, pt.p);
+      }
+    }
+    handleMove(p);
+  });
+  function handleMove(p) {
+    S.pointer = p; const d = S.drag, f = S.flow;
+    if (!d && S.tool === 'colony') {
+      const o = selObj(), roi = o && o.kind === 'colony' ? o.roi : f.roi; let cur = 'crosshair';
+      if (roi && f.mode !== 'roi') { const [cx, cy] = toScr(roi.cx, roi.cy), rr = Math.hypot((p.sx - cx) / (roi.rx * S.view.z), (p.sy - cy) / (roi.ry * S.view.z)); if (Math.abs(rr - 1) * Math.min(roi.rx, roi.ry) * S.view.z < 12) cur = 'nwse-resize'; }
+      cv.style.cursor = cur;
+    }
+    if (!d) { if (S.tool === 'area' && f.mode === 'magnetic' && f.wire) magPreview(p); if (S.tool === 'edit' || (S.tool === 'area' && (f.mode === 'poly' || f.mode === 'magnetic'))) render(); return; }
+    if (d.type === 'pan') { S.view.ox = d.ox + p.sx - d.sx; S.view.oy = d.oy + p.sy - d.sy; render(); }
+    else if (d.type === 'line') { const [x, y] = clampImg(p); f.temp.l[2] = x; f.temp.l[3] = y; render(); }
+    else if (d.type === 'ellipse') { f.temp.b = clampImg(p); render(); }
+    else if (d.type === 'platePending') { if (Math.hypot(p.sx - d.p0.sx, p.sy - d.p0.sy) > 6) { if (d.col) pushUndo(); d.type = 'plateMove'; } }
+    if (d.type === 'plateMove') { d.roi.cx = d.ox + (p.x - d.p0.x); d.roi.cy = d.oy + (p.y - d.p0.y); render(); }
+    else if (d.type === 'plateResize') {
+      if (!d.started) { if (Math.hypot(p.sx - d.p0.sx, p.sy - d.p0.sy) < 4) return; d.started = true; if (d.col) pushUndo(); }
+      const [cx, cy] = toScr(d.roi.cx, d.roi.cy), k2 = Math.max(0.05, Math.hypot(p.sx - cx, p.sy - cy) / d.d0); d.roi.rx = d.rx0 * k2; d.roi.ry = d.ry0 * k2; render();
+    }
+    else if (d.type === 'free' || d.type === 'lasso' || d.type === 'seed') { const q = clampImg(p), a = f.temp.pts[f.temp.pts.length - 1], [s0, s1] = toScr(a[0], a[1]); if (Math.hypot(s0 - p.sx, s1 - p.sy) > 1.5) { f.temp.pts.push(q); render(); } }
+    else if (d.type === 'brush') { const o = selObj(); if (o) { paint(o, d.last[0], d.last[1], p.x, p.y, d.add); d.last = [p.x, p.y]; } }
+    else if (d.type === 'handle') {
+      const [x, y] = clampImg(p); d.h.l[d.h.e] = x; d.h.l[d.h.e + 1] = y;
+      if (d.h.scale) S.scale.ppu = lineLen(S.scale.line) / S.scale.known;
+      refreshAll();
+    }
+  }
+  const endDrag = () => {
+    const d = S.drag, f = S.flow; S.drag = null; if (!d) return;
+    if (d.type === 'pan') cv.style.cursor = !S.tool || S.tool === 'select' ? 'grab' : 'crosshair';
+    else if (d.type === 'line') { const l = f.temp.l; f.temp = null; if (lineLen(l) * S.view.z < 4) { toast('Arraste para traçar a linha.'); render(); return; } finishLine(l); }
+    else if (d.type === 'free') { const pts = f.temp.pts; f.temp = null; if (pts.length < 3) { render(); return; } finishArea(pts, 'free'); }
+    else if (d.type === 'lasso') { const pts = f.temp.pts; f.temp = null; const o = selObj(); if (o && pts.length >= 3) { o.mask = MM.combine(o.mask, MM.rasterPolygon(pts, S.W, S.H), d.add, S.W, S.H); o.poly = null; o.edited = true; } refreshAll(); }
+    else if (d.type === 'brush') refreshAll();
+    else if (d.type === 'platePending') colonyClick(d.p0);
+    else if (d.type === 'plateResize' && !d.started) colonyClick(d.p0);
+    else if (d.type === 'plateMove' || d.type === 'plateResize') { if (d.col) recomputeColonies(d.col); else refreshAll(); }
+    else if (d.type === 'ellipse') {
+      const { a, b } = f.temp; f.temp = null; f.mode = null;
+      const roi = { cx: (a[0] + b[0]) / 2, cy: (a[1] + b[1]) / 2, rx: Math.abs(b[0] - a[0]) / 2, ry: Math.abs(b[1] - a[1]) / 2 };
+      if (roi.rx * S.view.z < 10 || roi.ry * S.view.z < 10) { toast('Arraste de um canto ao outro da placa.'); renderGuide(); render(); return; }
+      const o = selObj();
+      if (o && o.kind === 'colony') { pushUndo(); o.roi = roi; recomputeColonies(o); } else { f.roi = roi; refreshAll(); }
+    }
+    else if (d.type === 'seed') {
+      const pts = f.temp.pts; f.temp = null;
+      if (d.kind === 'new') clickDetect(pts); else { const o = selObj(); if (o && o.seeds) addSeed(o, d.kind, pts); }
+      render();
+    }
+  };
+  const onUp = (e) => {
+    if (e.pointerType === 'touch') {
+      touches.delete(e.pointerId);
+      if (pinch) { if (touches.size < 2) { pinch = null; touches.clear(); } return; }
+      if (pendingTouch) { const pt = pendingTouch; pendingTouch = null; handleDown(pt.e, pt.p); } // toque simples
+    }
+    endDrag();
+  };
+  cv.addEventListener('pointerup', onUp); cv.addEventListener('pointercancel', (e) => { touches.delete(e.pointerId); pendingTouch = null; if (touches.size < 2) pinch = null; endDrag(); });
+  cv.addEventListener('pointerleave', () => { S.pointer = null; render(); });
+  cv.addEventListener('dblclick', () => { const f = S.flow; if (S.tool === 'area' && f.mode === 'poly' && f.pts.length >= 3) { const pts = f.pts; f.pts = []; finishArea(pts, 'poly'); } else if (S.tool === 'area' && f.mode === 'magnetic') magClose(); });
+  cv.addEventListener('wheel', (e) => { if (!S.img) return; e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(Math.pow(1.0015, -e.deltaY), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+
+  document.addEventListener('keydown', (e) => {
+    const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y' && !typing) { e.preventDefault(); redo(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); $('file').click(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveProject(); return; }
+    if (e.key === 'PageDown' || e.key === 'PageUp') { if (typing) document.activeElement.blur(); }
+    if (typing) return;
+    const f = S.flow;
+    if (e.key === ' ') { S.space = true; e.preventDefault(); }
+    else if (e.key === 'Escape') { if (f.temp || (f.pts && f.pts.length) || (f.anchors && f.anchors.length)) { f.temp = null; if (f.pts) f.pts = []; f.anchors = []; f.segs = []; f.wire = null; f.prevPath = null; render(); } else setTool(null); }
+    else if (e.key === 'Enter' && S.tool === 'area' && f.mode === 'poly' && f.pts.length >= 3) { const pts = f.pts; f.pts = []; finishArea(pts, 'poly'); }
+    else if (e.key === 'Enter' && S.tool === 'area' && f.mode === 'magnetic') magClose();
+    else if (e.key === 'Backspace' && S.tool === 'area' && f.mode === 'poly' && f.pts.length) { f.pts.pop(); render(); }
+    else if (e.key === 'Backspace' && S.tool === 'area' && f.mode === 'magnetic' && f.anchors && f.anchors.length) magUndo();
+    else if (e.key === 'Backspace' && S.tool === 'persp' && f.pts.length) { f.pts.pop(); renderGuide(); render(); }
+    else if (e.key === 'Backspace' && S.tool === 'colony' && f.samples && f.samples.length) action('colUndoSample');
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && S.sel) { removeObj(S.sel); }
+    else if (e.key === 'PageDown') openPhoto(S.cur + 1); else if (e.key === 'PageUp') openPhoto(S.cur - 1);
+    else if (e.key === '+' || e.key === '=') zoomAt(1.25); else if (e.key === '-') zoomAt(0.8); else if (e.key === '0') fit();
+  });
+  document.addEventListener('keyup', (e) => { if (e.key === ' ') S.space = false; });
+  const removeObj = (id) => { pushUndo(); S.objs = S.objs.filter((o) => o.id !== id); if (S.sel === id) S.sel = null; if (S.flow.obj === id) S.flow.obj = null; refreshAll(); };
+
+  /* ---------- resultados ---------- */
+  function stats(vals) { const n = vals.length; if (!n) return null; const m = vals.reduce((a, b) => a + b, 0) / n; const sd = n > 1 ? Math.sqrt(vals.reduce((a, b) => a + (b - m) ** 2, 0) / (n - 1)) : 0; return { n, m, sd }; }
+  function tableData(objs = S.objs, scale = S.scale) {
+    const u = scale ? unit() : 'px', K = scale ? (1 / scale.ppu) * UF[scale.unit] / UF[unit()] : 1, out = [];
+    const areas = objs.filter((o) => o.kind === 'area' && o.mask.w);
+    if (areas.length) out.push({ kind: 'area', title: 'Áreas', short: ['Objeto', `Área ${u}²`, `Perím. ${u}`, `Compr. ${u}`, `Larg. ${u}`, 'Circ.', 'Cor'], cols: ['Objeto', `Área (${u}²)`, `Perímetro (${u})`, `Comprimento (${u})`, `Largura (${u})`, 'Circularidade', 'Cor média'],
+      rows: areas.map((o) => { const m = measureArea(o); return { o, v: [m.area * K * K, m.perimeter * K, m.feret * K, m.minFeret * K, m.circularity], color: m.mean }; }) });
+    const lens = objs.filter((o) => o.kind === 'length');
+    if (lens.length) out.push({ kind: 'length', title: 'Comprimentos', cols: ['Objeto', `Comprimento (${u})`], rows: lens.map((o) => ({ o, v: [lineLen(o.line) * K] })) });
+    const lws = objs.filter((o) => o.kind === 'lw');
+    if (lws.length) out.push({ kind: 'lw', title: 'Comprimento × Largura', cols: ['Objeto', `Comprimento (${u})`, `Largura (${u})`, 'C / L'],
+      rows: lws.map((o) => { const [a, b] = lwSorted(o), A = lineLen(a) * K, B = lineLen(b) * K; return { o, v: [A, B, B ? A / B : NaN] }; }) });
+    const cnts = objs.filter((o) => o.kind === 'count');
+    if (cnts.length) out.push({ kind: 'count', title: 'Contagens', cols: ['Contagem', 'Itens'], rows: cnts.map((o) => ({ o, v: [o.points.length], int: true })) });
+    const cols = objs.filter((o) => o.kind === 'colony');
+    if (cols.length) out.push({ kind: 'colony', title: 'Colônias', short: ['Placa', 'Colônias', 'Automát.', 'Manuais', `Área méd. ${u}²`], cols: ['Placa', 'Colônias', 'Marcadas automaticamente', 'Adicionadas à mão', `Área média (${u}²)`],
+      rows: cols.map((o) => { const it = colonyItems(o), auto = it.filter((i) => i.auto), A = auto.length ? auto.reduce((a, i) => a + i.area / i.n, 0) / auto.length : NaN; return { o, v: [it.reduce((a, i) => a + i.n, 0), auto.reduce((a, i) => a + i.n, 0), it.length - auto.length, A * K * K], intCols: [0, 1, 2] }; }) });
+    return out;
+  }
+  function renderResults() {
+    const data = tableData(), body = $('resBody');
+    // cabeçalho: foto atual e grupo das próximas medições
+    $('resSub').textContent = S.img ? (S.photos.length > 1 ? `Foto ${S.cur + 1} de ${S.photos.length}: ${S.name}` : S.name) : '';
+    $('groupBar').hidden = !S.img;
+    $('groupList').innerHTML = S.groups.map((g) => `<option value="${esc(g)}">`).join('');
+    if (document.activeElement !== $('groupIn')) $('groupIn').value = S.group;
+    if (!data.length) { $('resCount').textContent = '0'; body.innerHTML = `<div id="resEmpty">${S.img ? 'Suas medições aparecem aqui, com média e desvio padrão de cada coluna.' : 'Abra uma ou várias imagens e escolha uma ferramenta para medir.'}</div>`; return; }
+    const showG = S.groups.length > 0 || S.objs.some((o) => o.group);
+    const gSel = (o) => `<td class="gcell"><select data-grp="${o.id}" title="Grupo"><option value="">—</option>${S.groups.map((g) => `<option ${o.group === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select></td>`;
+    body.innerHTML = data.map((sec) => {
+      const n = sec.rows[0].v.length;
+      const st = [...Array(n)].map((_, i) => stats(sec.rows.map((r) => r.v[i]).filter(Number.isFinite)));
+      const cell = (r, v, i) => (r.int || (r.intCols && r.intCols.includes(i))) ? (Number.isFinite(v) ? String(v) : '—') : fmt(v);
+      const extra = sec.kind === 'area' ? 1 : 0, pad = '<td></td>'.repeat(extra + (showG ? 1 : 0) + 1);
+      return `<div class="sec"><h3>${sec.title}<span>${sec.rows.length} medida${sec.rows.length > 1 ? 's' : ''}</span></h3><table><thead><tr>${(sec.short || sec.cols).map((c, i) => `<th title="${esc(sec.cols[i])}">${esc(c)}</th>`).join('')}${showG ? '<th>Grupo</th>' : ''}<th></th></tr></thead><tbody>` +
+        sec.rows.map((r) => `<tr class="row ${r.o.id === S.sel ? 'sel' : ''}" data-id="${r.o.id}"><td><span class="dot" style="background:${r.o.color}"></span>${objName(r.o)}</td>${r.v.map((v, i) => `<td>${cell(r, v, i)}</td>`).join('')}${r.color ? `<td><span class="sw" title="RGB ${r.color.map((c) => Math.round(c)).join(', ')}" style="background:rgb(${r.color.map(Math.round).join(',')})"></span></td>` : ''}${showG ? gSel(r.o) : ''}<td><button class="del" data-del="${r.o.id}" title="Apagar">×</button></td></tr>`).join('') +
+        (sec.rows.length > 1 ? `<tr class="sum"><td>Média</td>${st.map((x) => `<td>${x ? fmt(x.m) : ''}</td>`).join('')}${pad}</tr><tr class="sum"><td>Desvio</td>${st.map((x) => `<td>${x ? fmt(x.sd) : ''}</td>`).join('')}${pad}</tr>` : '') +
+        `</tbody></table></div>`;
+    }).join('');
+    body.querySelectorAll('tr.row').forEach((tr) => tr.onclick = (e) => { if (e.target.dataset.del || e.target.dataset.grp) return; S.sel = +tr.dataset.id; refreshAll(); });
+    body.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => removeObj(+b.dataset.del));
+    body.querySelectorAll('[data-grp]').forEach((sl) => { sl.onclick = (e) => e.stopPropagation(); sl.onchange = () => { const o = S.objs.find((x) => x.id === +sl.dataset.grp); if (o) { pushUndo(); o.group = sl.value; refreshAll(); } }; });
+    renderPhotoNav();
+    $('resCount').textContent = data.reduce((a, sec) => a + sec.rows.length, 0);
+  }
+  const setGroup = (v) => { v = v.trim(); S.group = v; if (v && !S.groups.includes(v)) S.groups.push(v); renderResults(); };
+  $('groupIn').addEventListener('change', (e) => setGroup(e.target.value));
+  $('groupIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') { setGroup(e.target.value); e.target.blur(); } });
+  $('groupAll').onclick = () => { if (!S.objs.length) { toast('Não há medições nesta foto.'); return; } pushUndo(); S.objs.forEach((o) => o.group = S.group); refreshAll(); toast(S.group ? `Todas as medições desta foto agora estão em "${S.group}".` : 'Grupo removido das medições desta foto.'); };
+  function refreshAll() {
+    const sc = $('scaleChip');
+    if (S.scale) { sc.textContent = `Escala: 1 ${S.scale.unit} = ${nf(S.scale.ppu, 2)} px`; sc.classList.add('set'); }
+    else { sc.textContent = 'Sem escala — resultados em pixels'; sc.classList.remove('set'); }
+    const du = $('dispUnit'); du.disabled = !S.scale; du.innerHTML = S.scale ? unitOpts(unit()) : '<option>px</option>';
+    renderResults(); renderGuide(); render();
+    if (!$('lookPanel').hidden) syncLook();
+    if (S.photos && S.photos.length) scheduleSave();
+  }
+
+  /* ---------- exportação ---------- */
+  const num = (v, d = 4) => Number.isFinite(v) ? v.toFixed(d).replace('.', ',') : '';
+  // Planilha "longa": uma linha por medição, com Foto e Grupo, de todas as fotos; depois um resumo por grupo.
+  function exportRows() {
+    stash();
+    const photos = S.photos.length ? S.photos : [];
+    const rows = [['MetricMod'], ['Fotos', String(photos.length)], ['Unidade dos resultados', unit()], []];
+    const secs = new Map(); // kind -> {title, cols, rows:[]}
+    const colonyList = [];
+    photos.forEach((p) => {
+      const objs = p.objs; if (!objs.length) return;
+      const sc = p.scale, K = sc ? (1 / sc.ppu) * UF[sc.unit] / UF[unit()] : 1;
+      for (const sec of tableData(objs, sc)) {
+        let t = secs.get(sec.kind);
+        if (!t) { t = { title: sec.title, cols: ['Foto', 'Grupo', ...(sec.kind === 'area' ? sec.cols.slice(0, -1).concat(['Cor R', 'Cor G', 'Cor B']) : sec.cols), 'Escala'], rows: [], vals: [] }; secs.set(sec.kind, t); }
+        for (const r of sec.rows) {
+          t.rows.push([p.name, r.o.group || '', objName(r.o), ...r.v.map((v, i) => (r.int || (r.intCols && r.intCols.includes(i))) ? (Number.isFinite(v) ? String(v) : '') : num(v)), ...(r.color ? r.color.map((c) => num(c, 1)) : []), sc ? `1 ${sc.unit} = ${num(sc.ppu, 3)} px` : 'pixels']);
+          t.vals.push({ g: r.o.group || '(sem grupo)', v: r.v });
+        }
+      }
+      for (const o of objs) if (o.kind === 'colony') for (const it of colonyItems(o)) colonyList.push([p.name, o.group || '', objName(o), num(it.x, 1), num(it.y, 1), String(it.n), it.auto ? num(it.area * K * K) : '', it.auto ? 'automática' : 'manual']);
+    });
+    for (const t of secs.values()) { rows.push([t.title]); rows.push(t.cols); t.rows.forEach((r) => rows.push(r)); rows.push([]); }
+    if (colonyList.length) { rows.push(['Colônias, uma por linha']); rows.push(['Foto', 'Grupo', 'Placa', 'X (px)', 'Y (px)', 'Colônias no ponto', `Área (${unit()}²)`, 'Marcação']); colonyList.forEach((r) => rows.push(r)); rows.push([]); }
+    // resumo por grupo
+    const groupsUsed = [...new Set([...secs.values()].flatMap((t) => t.vals.map((x) => x.g)))];
+    if (groupsUsed.length > 1 || (groupsUsed.length === 1 && groupsUsed[0] !== '(sem grupo)')) {
+      rows.push(['Resumo por grupo']);
+      for (const t of secs.values()) {
+        const names = t.cols.slice(3, 3 + t.vals[0].v.length);
+        rows.push([t.title]); rows.push(['Grupo', 'n', ...names.flatMap((c) => [`${c} média`, `${c} desvio`])]);
+        for (const g of groupsUsed) {
+          const vs = t.vals.filter((x) => x.g === g); if (!vs.length) continue;
+          rows.push([g, String(vs.length), ...names.flatMap((_, i) => { const st = stats(vs.map((x) => x.v[i]).filter(Number.isFinite)); return st ? [num(st.m), st.n > 1 ? num(st.sd) : ''] : ['', '']; })]);
+        }
+        rows.push([]);
+      }
+    }
+    return rows;
+  }
+  const baseName = () => (S.name || 'imagem').replace(/\.[^.]+$/, '');
+  const download = (blob, name) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); };
+  const anyObjs = () => S.objs.length || S.photos.some((p) => p.objs.length);
+  $('btnCsv').onclick = () => {
+    if (!anyObjs()) { toast('Ainda não há medições para exportar.'); return; }
+    const csv = exportRows().map((r) => r.map((c) => /[;"\n]/.test(c) ? `"${String(c).replace(/"/g, '""')}"` : c).join(';')).join('\r\n');
+    download(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }), S.photos.length > 1 ? `metricmod-${S.photos.length}-fotos.csv` : `${baseName()}-medicoes.csv`); toast('Planilha salva na pasta de downloads.');
+  };
+  $('btnCopy').onclick = async () => {
+    if (!anyObjs()) { toast('Ainda não há medições para copiar.'); return; }
+    const tsv = exportRows().map((r) => r.join('\t')).join('\n');
+    try { await navigator.clipboard.writeText(tsv); } catch { const t = document.createElement('textarea'); t.value = tsv; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    toast('Tabela copiada. Cole no Excel com Ctrl+V.');
+  };
+  $('btnPng').onclick = () => {
+    if (!S.img) return;
+    const c = document.createElement('canvas'); c.width = S.W; c.height = S.H; const g = c.getContext('2d');
+    g.drawImage(S.imgCanvas, 0, 0); for (const o of S.objs) if (o.kind === 'area' && o.mask.w) g.drawImage(maskCanvas(o), o.mask.x, o.mask.y);
+    drawOverlays(g, (x, y) => [x, y], Math.max(1, Math.max(S.W, S.H) / 1100));
+    c.toBlob((b) => { download(b, `${baseName()}-marcada.png`); toast('Imagem marcada salva na pasta de downloads.'); });
+  };
+
+  /* ---------- abrir imagem ---------- */
+  /* ---------- fotos (lote) ---------- */
+  S.photos = []; S.cur = -1; S.lastScale = null;
+  const isTiff = (f) => /\.tiff?$/i.test(f.name || '') || f.type === 'image/tiff';
+  const isHeic = (f) => /\.hei[cf]$/i.test(f.name || '') || /image\/hei[cf]/.test(f.type || '');
+  const isProj = (f) => /\.metricmod$/i.test(f.name || '');
+  const isImg = (f) => f && (/^image\//.test(f.type) || /\.(jpe?g|png|webp|bmp|gif|avif|tiff?|hei[cf])$/i.test(f.name || ''));
+  const newPhoto = (name, file, src, cal) => ({ uid: Math.random().toString(36).slice(2), file, src: src || null, name, canvas: null, orig: null, objs: [], seq: { area: 0, length: 0, lw: 0, count: 0, colony: 0 }, undo: [], redo: [], view: null,
+    scale: cal ? { ppu: cal.ppu, unit: cal.unit, known: null, line: null, fromFile: cal.source } : null });
+  const canvasFromRGBA = (W, H, rgba) => { const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').putImageData(new ImageData(rgba, W, H), 0, 0); return c; };
+  async function addFiles(list) {
+    const all = [...list], proj = all.find(isProj);
+    if (proj) { openProject(proj); return; }
+    const files = all.filter(isImg).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'pt', { numeric: true }));
+    const skipped = all.length - files.length;
+    if (!files.length) { toast('Nenhuma imagem que o MetricMod consiga abrir. Use JPG, PNG, TIFF, WebP, BMP ou HEIC (no Safari).'); return; }
+    const start = S.photos.length; busy(true);
+    for (const f of files) {
+      if (isTiff(f)) {
+        try {
+          const r = await MM.decodeTIFF(await f.arrayBuffer(), 50);
+          r.pages.forEach((pg, k) => S.photos.push(newPhoto(r.pages.length > 1 ? `${f.name} (página ${k + 1})` : f.name, null, canvasFromRGBA(pg.W, pg.H, pg.rgba), pg.cal)));
+          if (r.total > r.pages.length) toast(`${f.name} tem ${r.total} páginas; abri as ${r.pages.length} primeiras.`);
+          else if (r.pages.some((pg) => pg.bits > 8)) toast(`${f.name} tem ${r.pages[0].bits} bits: a imagem é mostrada com o contraste ajustado do mínimo ao máximo, como no ImageJ.`);
+        } catch (e) { toast(`Não consegui abrir ${f.name}: ${e.message}.`); }
+      } else S.photos.push(newPhoto(f.name || `imagem colada ${S.photos.length + 1}`, f));
+    }
+    busy(false);
+    if (S.photos.length === start) return;
+    openPhoto(start); scheduleSave(true);
+    const added = S.photos.length - start;
+    if (added > 1) toast(`${added} fotos abertas. Use as setas no topo (ou PageUp/PageDown) para passar de uma para outra.`);
+    else if (skipped) toast(`${skipped} arquivo(s) ignorado(s): não são imagens.`);
+  }
+  function stash() { // guarda o estado da foto atual
+    const p = S.photos[S.cur]; if (!p) return;
+    Object.assign(p, { objs: S.objs, seq: S.seq, undo: S.undo, redo: S.redo, view: { ...S.view }, scale: S.scale });
+  }
+  function decode(p) {
+    return new Promise((res, rej) => {
+      if (p.canvas) return res(p.canvas);
+      if (p.src) return res(p.src);
+      const url = URL.createObjectURL(p.file), img = new Image();
+      img.onload = () => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); URL.revokeObjectURL(url); res(c); };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
+      img.src = url;
+    });
+  }
+  async function openPhoto(i) {
+    if (i < 0 || i >= S.photos.length) return;
+    stash(); const p = S.photos[i]; busy(true);
+    let c; try { c = await decode(p); } catch {
+      busy(false);
+      toast(isHeic(p.file || {}) ? 'Este navegador não abre fotos HEIC. Abra no Safari, converta para JPG, ou no iPhone use Ajustes > Câmera > Formatos > "Mais compatível".' : `Não foi possível abrir ${p.name}.`);
+      return;
+    }
+    S.cur = i; S.name = p.name; S.objs = p.objs; S.seq = p.seq; S.undo = p.undo; S.redo = p.redo; S.sel = null;
+    S.scale = p.scale || (S.lastScale ? { ...S.lastScale, line: null, inherited: true } : null);
+    setImage(c, p.view); busy(false);
+    if (!S.scale) document.querySelector('[data-tool=scale]').classList.add('pulse');
+    else if (p.scale && p.scale.fromFile && !p.scaleNoted) { p.scaleNoted = true; toast(`Escala lida do arquivo (${p.scale.fromFile}): 1 ${p.scale.unit} = ${nf(p.scale.ppu, 3)} px.`); }
+    else if (S.scale.inherited && !p.scale) toast(`Usando a escala da foto anterior (1 ${S.scale.unit} = ${nf(S.scale.ppu, 2)} px). Defina de novo se esta foto foi tirada de outra distância.`);
+    renderPhotoNav();
+  }
+  function setImage(c, view) {
+    const g = c.getContext('2d', { willReadFrequently: true });
+    Object.assign(S, { img: c, imgCanvas: c, W: c.width, H: c.height, rgba: g.getImageData(0, 0, c.width, c.height).data, det: null, grad: null, blur: null });
+    S.minArea = Math.max(10, Math.round(S.W * S.H * 0.0002));
+    $('empty').style.display = 'none'; document.querySelectorAll('.tool').forEach((b) => b.disabled = false);
+    updUndo(); setTool(null); if (view) { S.view = { ...view }; render(); } else fit(); refreshAll();
+  }
+  function renderPhotoNav() {
+    const nav = $('photoNav'); nav.hidden = S.photos.length < 2; if (nav.hidden) return;
+    $('photoSel').innerHTML = S.photos.map((p, i) => { const n = (i === S.cur ? S.objs : p.objs).length; return `<option value="${i}" ${i === S.cur ? 'selected' : ''}>${i + 1}/${S.photos.length}  ${esc(p.name)}${n ? `  (${n})` : ''}</option>`; }).join('');
+    $('photoPrev').disabled = S.cur <= 0; $('photoNext').disabled = S.cur >= S.photos.length - 1;
+  }
+  $('photoSel').onchange = (e) => openPhoto(+e.target.value);
+  $('photoPrev').onclick = () => openPhoto(S.cur - 1); $('photoNext').onclick = () => openPhoto(S.cur + 1);
+  const loadFile = (f) => addFiles([f]);
+  $('btnOpen').onclick = $('btnOpen2').onclick = () => $('file').click();
+  $('file').onchange = (e) => { addFiles(e.target.files); e.target.value = ''; };
+  $('folder').onchange = (e) => { addFiles(e.target.files); e.target.value = ''; };
+  $('btnFolder').onclick = $('btnFolder2').onclick = () => $('folder').click();
+  $('scaleChip').onclick = () => setTool('scale');
+  $('dispUnit').onchange = (e) => { S.dispUnit = e.target.value; refreshAll(); };
+  $('btnUndo').onclick = undo; $('btnRedo').onclick = redo;
+  $('btnZoomIn').onclick = () => zoomAt(1.25); $('btnZoomOut').onclick = () => zoomAt(0.8); $('btnFit').onclick = fit;
+  ['dragenter', 'dragover'].forEach((t) => wrap.addEventListener(t, (e) => { e.preventDefault(); $('empty').classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach((t) => wrap.addEventListener(t, (e) => { e.preventDefault(); $('empty').classList.remove('drag'); }));
+  wrap.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
+  document.addEventListener('paste', (e) => { const it = [...e.clipboardData.items].find((i) => i.type.startsWith('image/')); if (it) loadFile(it.getAsFile()); });
+  new ResizeObserver(() => render()).observe(wrap);
+
+  /* ---------- painel de aparência ---------- */
+  const look = $('lookPanel'), lb = $('btnLook');
+  const syncLook = () => {
+    const st = S.style;
+    $('lkWidth').value = st.width; $('lkWidthV').textContent = nf(st.width, st.width % 1 ? 1 : 0) + ' px';
+    $('lkSize').value = st.size; $('lkSizeV').textContent = st.size + ' px';
+    $('lkLegend').value = st.legend; $('lkTags').checked = st.tags; $('lkTagsRow').hidden = st.legend === 'line';
+    $('lkDash').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === st.dash));
+    const o = selObj();
+    $('lkColors').innerHTML = o ? COLORS.concat(['#ffffff', '#ffe600']).map((c) => `<button class="swb ${o.color === c ? 'on' : ''}" data-c="${c}" style="background:${c}" title="${c}"></button>`).join('') + `<input type="color" id="lkCustom" value="${o.color}" title="Outra cor">` : '<em>Selecione uma medição na imagem ou na tabela.</em>';
+    $('lkColors').querySelectorAll('[data-c]').forEach((b) => b.onclick = () => setColor(b.dataset.c));
+    if ($('lkCustom')) $('lkCustom').oninput = (e) => setColor(e.target.value);
+  };
+  const setColor = (c) => { const o = selObj(); if (!o) return; pushUndo(); o.color = c; refreshAll(); };
+  const setStyle = (k2, v) => { S.style[k2] = v; saveStyle(); syncLook(); render(); };
+  lb.onclick = () => { look.hidden = !look.hidden; lb.setAttribute('aria-expanded', String(!look.hidden)); if (!look.hidden) syncLook(); };
+  document.addEventListener('pointerdown', (e) => { if (!look.hidden && !$('lookWrap').contains(e.target)) { look.hidden = true; lb.setAttribute('aria-expanded', 'false'); } });
+  $('lkWidth').oninput = (e) => setStyle('width', +e.target.value);
+  $('lkSize').oninput = (e) => setStyle('size', +e.target.value);
+  $('lkLegend').onchange = (e) => setStyle('legend', e.target.value);
+  $('lkTags').onchange = (e) => setStyle('tags', e.target.checked);
+  $('lkDash').querySelectorAll('button').forEach((b) => b.onclick = () => setStyle('dash', b.dataset.v));
+
+  /* ---------- projeto: salvar, abrir e salvamento automático ---------- */
+  // Formato .metricmod: "MMPROJ1\n" + tamanho do cabeçalho (uint32) + cabeçalho JSON + imagens em sequência.
+  const rle = (m) => { const r = []; let cur = 0, n = 0; for (let i = 0; i < m.data.length; i++) { const v = m.data[i] ? 1 : 0; if (v === cur) n++; else { r.push(n); cur = v; n = 1; } } r.push(n); return { x: m.x, y: m.y, w: m.w, h: m.h, rle: r }; };
+  const unrle = (o) => { const m = MM.newMask(o.x, o.y, o.w, o.h); let p2 = 0, v = 0; for (const n of o.rle) { if (v) m.data.fill(1, p2, p2 + n); p2 += n; v ^= 1; } return m; };
+  const serObj = (o) => { const c = cloneObj(o); if (c.mask) c.mask = rle(c.mask); delete c.edited; return c; };
+  const deserObj = (o) => { if (o.mask) o.mask = unrle(o.mask); if (o.id >= idSeq) idSeq = o.id + 1; return o; };
+  const canvasBlob = (c) => new Promise((r) => c.toBlob(r, 'image/png'));
+  async function photoBlob(p) {
+    if (p.canvas) return canvasBlob(p.canvas);      // foto corrigida
+    if (p.src) return canvasBlob(p.src);            // TIFF já decodificado
+    return p.file;
+  }
+  function projectHeader() {
+    stash();
+    return { app: 'MetricMod', version: 1, saved: new Date().toISOString(), cur: S.cur, group: S.group, groups: S.groups, dispUnit: S.dispUnit, lastScale: S.lastScale, style: S.style,
+      photos: S.photos.map((p) => ({ uid: p.uid, name: p.name, corrected: !!(p.canvas || p.orig), scale: p.scale, view: p.view, seq: p.seq, objs: p.objs.map(serObj) })) };
+  }
+  async function buildProject() {
+    const head = projectHeader(), blobs = [];
+    for (let i = 0; i < S.photos.length; i++) { const b = await photoBlob(S.photos[i]); head.photos[i].type = b.type || 'image/png'; head.photos[i].size = b.size; blobs.push(b); }
+    const hj = new TextEncoder().encode(JSON.stringify(head)), len = new Uint8Array(4); new DataView(len.buffer).setUint32(0, hj.length, true);
+    return new Blob([new TextEncoder().encode('MMPROJ1\n'), len, hj, ...blobs], { type: 'application/octet-stream' });
+  }
+  function restoreProject(head, imageBlobs) {
+    S.photos = head.photos.map((h, i) => { const p = newPhoto(h.name, imageBlobs[i]); return Object.assign(p, { uid: h.uid || p.uid, scale: h.scale, view: h.view, seq: h.seq, objs: h.objs.map(deserObj), orig: null, corrected: !!h.corrected }); });
+    Object.assign(S, { cur: -1, group: head.group || '', groups: head.groups || [], dispUnit: head.dispUnit, lastScale: head.lastScale });
+    if (head.style) { Object.assign(S.style, head.style); saveStyle(); }
+    if (S.photos.length) openPhoto(Math.max(0, Math.min(S.photos.length - 1, head.cur || 0)));
+  }
+  async function readProject(file) {
+    const buf = await file.arrayBuffer(), dv = new DataView(buf);
+    if (new TextDecoder().decode(new Uint8Array(buf, 0, 8)) !== 'MMPROJ1\n') throw new Error('arquivo não é um projeto do MetricMod');
+    const hl = dv.getUint32(8, true), head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, hl)));
+    let off = 12 + hl; const blobs = head.photos.map((h) => { const b = new Blob([buf.slice(off, off + h.size)], { type: h.type }); off += h.size; return b; });
+    return { head, blobs };
+  }
+  async function openProject(file) {
+    if (S.photos.some((p) => p.objs.length) && !confirm('Abrir o projeto substitui as fotos e medições abertas agora. Continuar?')) return;
+    busy(true);
+    try { const { head, blobs } = await readProject(file); restoreProject(head, blobs); toast(`Projeto aberto: ${head.photos.length} foto(s).`); scheduleSave(true); }
+    catch (e) { toast(`Não consegui abrir o projeto: ${e.message}.`); }
+    busy(false);
+  }
+  async function saveProject() {
+    if (!S.photos.length) { toast('Abra pelo menos uma foto antes de salvar o projeto.'); return; }
+    busy(true);
+    try {
+      const blob = await buildProject(), name = `projeto-metricmod-${new Date().toISOString().slice(0, 10)}.metricmod`;
+      if (window.showSaveFilePicker) {
+        try {
+          const h = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'Projeto MetricMod', accept: { 'application/octet-stream': ['.metricmod'] } }] });
+          const w = await h.createWritable(); await w.write(blob); await w.close(); toast('Projeto salvo.'); busy(false); return;
+        } catch (e) { if (e.name === 'AbortError') { busy(false); return; } }
+      }
+      download(blob, name); toast('Projeto salvo na pasta de downloads. Para continuar depois, abra esse arquivo no MetricMod.');
+    } catch (e) { toast(`Não consegui salvar o projeto: ${e.message}.`); }
+    busy(false);
+  }
+  $('btnSave').onclick = saveProject;
+
+  // salvamento automático no navegador (IndexedDB): imagens uma vez, medições a cada mudança
+  const DB = { db: null };
+  const idb = () => DB.db || (DB.db = new Promise((res, rej) => { try { const r = indexedDB.open('metricmod', 1); r.onupgradeneeded = () => { r.result.createObjectStore('images'); r.result.createObjectStore('state'); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }));
+  const tx = async (store, mode, fn) => { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(store, mode), st = t.objectStore(store), r = fn(st); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }); };
+  let saveT = null, saving = false;
+  function scheduleSave(soon) { clearTimeout(saveT); saveT = setTimeout(autoSave, soon ? 600 : 2500); }
+  async function autoSave() {
+    if (saving || !S.photos.length) return; saving = true;
+    try {
+      for (const p of S.photos) if (!p.storedImg || p.imgDirty) { const b = await photoBlob(p); if (b) await tx('images', 'readwrite', (st) => st.put(b, p.uid)); p.storedImg = true; p.imgDirty = false; }
+      const head = projectHeader();
+      await tx('state', 'readwrite', (st) => st.put(JSON.stringify(head), 'current'));
+    } catch (e) { /* armazenamento indisponível ou cheio: o botão Salvar projeto continua funcionando */ }
+    saving = false;
+  }
+  async function clearAutoSave() { try { await tx('state', 'readwrite', (st) => st.clear()); await tx('images', 'readwrite', (st) => st.clear()); } catch (e) { /* ignora */ } }
+  async function checkAutoSave() {
+    try {
+      const raw = await tx('state', 'readonly', (st) => st.get('current')); if (!raw) return;
+      const head = JSON.parse(raw); if (!head.photos || !head.photos.length) return;
+      const when = new Date(head.saved), n = head.photos.length, nm = head.photos.reduce((a, p) => a + p.objs.length, 0);
+      const box = $('resume'); box.hidden = false;
+      $('resumeTxt').textContent = `${n} foto${n > 1 ? 's' : ''} e ${nm} ${nm === 1 ? 'medição' : 'medições'}, salvo em ${when.toLocaleDateString('pt-BR')} às ${when.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}.`;
+      $('btnResume').onclick = async () => {
+        busy(true);
+        const blobs = []; for (const h of head.photos) blobs.push(await tx('images', 'readonly', (st) => st.get(h.uid)));
+        if (blobs.some((b) => !b)) { busy(false); toast('Parte das imagens salvas não foi encontrada.'); return; }
+        restoreProject(head, blobs); S.photos.forEach((p) => { p.storedImg = true; }); box.hidden = true; busy(false);
+      };
+      $('btnDiscard').onclick = async () => { await clearAutoSave(); box.hidden = true; toast('Trabalho anterior descartado.'); };
+    } catch (e) { /* sem IndexedDB */ }
+  }
+  checkAutoSave();
+  $('btnRes').onclick = () => document.body.classList.toggle('showRes');
+  $('resClose').onclick = () => document.body.classList.remove('showRes');
+
+  /* ---------- app instalável (quando aberto por um endereço https) ---------- */
+  let installEvt = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; $('btnInstall').hidden = false; });
+  $('btnInstall').onclick = async () => { if (!installEvt) return; installEvt.prompt(); const r = await installEvt.userChoice; if (r.outcome === 'accepted') toast('MetricMod instalado. Ele abre pelo ícone, mesmo sem internet.'); installEvt = null; $('btnInstall').hidden = true; };
+  window.addEventListener('appinstalled', () => { $('btnInstall').hidden = true; });
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol) && document.querySelector('link[rel=manifest]')) {
+    navigator.serviceWorker.register('sw.js').then((reg) => {
+      const ask = (w) => { const b = $('updBar'); b.hidden = false; $('btnUpd').onclick = async () => { await autoSave(); w.postMessage('atualizar'); }; };
+      if (reg.waiting && navigator.serviceWorker.controller) ask(reg.waiting);
+      reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && navigator.serviceWorker.controller) ask(w); }); });
+      setInterval(() => reg.update().catch(() => {}), 3600e3);
+    }).catch(() => {});
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (!reloading) { reloading = true; location.reload(); } });
+  }
+  // abrir arquivos pelo sistema ("Abrir com > MetricMod") quando instalado no computador
+  if ('launchQueue' in window) window.launchQueue.setConsumer(async (lp) => { if (lp.files && lp.files.length) addFiles(await Promise.all(lp.files.map((h) => h.getFile()))); });
+
+  window.MetricMod = { S, loadFile, setTool, action }; // para testes
+  refreshAll();
+})();
+</script>
+</body>
+</html>
