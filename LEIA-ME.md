@@ -1,4 +1,4 @@
-# MetricMod — versão 0.6.0
+# MetricMod — versão 0.7.0
 
 Abra **MetricMod.html** com dois cliques (Chrome ou Edge). Funciona sem internet e sem instalar nada.
 Versão instalável publicada em **https://metricmod.github.io/** (veja PUBLICAR.md).
@@ -30,18 +30,42 @@ Versão instalável publicada em **https://metricmod.github.io/** (veja PUBLICAR
      Mexer na placa ou nos controles refaz a contagem. "Adicionar outro exemplo" ensina mais um tipo de colônia.
    - **Ajustar contorno**: pincel/laço para completar o que faltou, borracha/laço para apagar o que passou (Alt inverte).
    - **Mover e selecionar**: arraste as pontas das linhas para corrigir.
-4. **Em lote** (quando há várias fotos):
+   - **Área → Retângulo / Elipse**: arraste para medir uma região retangular ou oval.
+   - **Ângulo**: três cliques (ponta, vértice, ponta).
+   - **Porcentagem de cobertura**: % da área (ou de uma região desenhada) coberta por planta, tecido, biofilme etc.
+   - **Bandas (gel / Western blot)**: arraste um retângulo em cada banda; mostra a densidade com fundo descontado
+     e o valor relativo à primeira banda. Use a imagem original (PNG/TIFF), não JPG.
+   - **Perfil de intensidade**: trace uma linha e veja o gráfico do brilho ao longo dela (exporta CSV).
+   - **Recortar e girar**: girar 90°, espelhar, nivelar por uma linha (horizonte), recortar.
+   - **Ajustar imagem**: brilho, contraste, inverter, canal de cor, ajuste automático e corrigir iluminação irregular.
+     Muda só a visualização; marque "Usar na detecção" para a detecção usar a imagem ajustada. A medição de cor/intensidade
+     usa sempre a foto original.
+   - **Medir intensidade** (caixa nos resultados): acrescenta média, desvio, mínimo, máximo, IntDen, RawIntDen e CTCF às áreas
+     (como no ImageJ). Para CTCF, marque uma área como "fundo" na coluna Papel.
+   - **Comparar** (botão no topo, com 2+ fotos): duas fotos lado a lado com divisória arrastável.
+   - **Barra de escala** (Aparência): barra com o tamanho real na imagem salva; escolha posição, cor e tamanho.
+4. **Protocolos** (primeiro botão da barra): abrem a ferramenta já configurada e mostram os passos. Prontos: sementes e grãos,
+   contagem de colônias, área foliar, porcentagem de cobertura, fluorescência (CTCF), cicatrização (scratch assay, com detecção
+   automática da fenda e % de fechamento em relação à primeira foto do grupo) e bandas de gel.
+   **Criar protocolo**: ajuste a ferramenta do seu jeito e salve com nome, descrição e passos. Fica guardado neste navegador,
+   nesta cópia do programa. "Exportar" gera um arquivo `.metricmod-protocolo.json` para levar para outro computador ou passar
+   ao grupo; "Importar arquivo" traz de volta. Os prontos podem ser duplicados e editados.
+5. **Em lote** (quando há várias fotos):
    - "Usar esta escala em todas as fotos" (aparece depois de definir a escala).
    - "Corrigir as outras fotos do mesmo jeito": mesma correção de perspectiva, para câmera fixa na mesma posição.
    - Em Detectar objetos: "Medir em todas as fotos", com os mesmos ajustes.
+   - Em Porcentagem de cobertura e Cicatrização: "Em todas as fotos".
    - Em Contar colônias: "Contar em todas as fotos", com os mesmos exemplos; a placa é detectada em cada foto.
-5. **Grupo** (painel de resultados): digite o grupo/tratamento antes de medir (ex.: "Tratamento A") e as próximas medições
+6. **Grupo** (painel de resultados): digite o grupo/tratamento antes de medir (ex.: "Tratamento A") e as próximas medições
    entram nele. "Aplicar à foto" coloca todas as medições da foto no grupo. Também dá para trocar o grupo em cada linha.
-6. **Aparência**: espessura e tipo de linha (contínua, tracejada, pontilhada), tamanho do texto, cor da medição selecionada
+7. **Aparência**: espessura e tipo de linha (contínua, tracejada, pontilhada), tamanho do texto, cor da medição selecionada
    e posição da legenda (junto da marcação ou em um dos quatro cantos da imagem). Vale também para a imagem salva.
-7. **Resultados em**: escolha µm, mm, cm, dm, m, km, polegada ou pé; tudo é convertido.
-8. **Exportar para Excel**, **Copiar tabela** ou **Salvar imagem marcada**. A planilha traz todas as fotos,
+8. **Resultados em**: escolha µm, mm, cm, dm, m, km, polegada ou pé; tudo é convertido.
+9. **Exportar para Excel**, **Copiar tabela** ou **Salvar imagem marcada**. A planilha traz todas as fotos,
    uma linha por medição com Foto, Grupo e Escala, a lista de colônias com posição e área, e um resumo por grupo (n, média, desvio).
+
+**Primeira vez?** "Usar fotos de exemplo" abre 5 fotos de treino (sementes com régua, placa, cicatrização 0 h e 24 h, gel),
+e um tutorial curto aparece no primeiro uso (dá para rever na aba Novidades do botão i).
 
 **No celular**: abra o mesmo arquivo no navegador do celular. As ferramentas ficam na barra de baixo, os resultados no botão
 "Resultados" no topo, e o "?" mostra a explicação de cada passo. Um dedo toca e arrasta; dois dedos dão zoom e movem a imagem.
@@ -65,6 +89,10 @@ Teste de colônias (placa com 60 colônias, 3 pares encostados e 15 colônias de
 Teste de perspectiva (foto inclinada): erro na área caiu de 4,5% para 1,3%, igual à foto tirada de frente.
 
 Teste de contorno (objeto com metade quase da cor do fundo): método por cor errava −17,9%; clique no objeto erra −0,03%.
+
+Teste de intensidade: média, IntDen e desvio idênticos ao ImageJ. Ângulo, retângulo e elipse conferidos com valores exatos.
+Cicatrização (imagens de teste): fenda detectada com erro de −2,8% e −0,4%. Gel: proporção 1 : 2,006 : 0,501 : 1,505 para 1 : 2 : 0,5 : 1,5.
+Correção de iluminação: variação do fundo caiu de 17,2% para 1,8% (método próprio, parecido mas não idêntico ao rolling ball do ImageJ).
 
 ## Pastas
 - `site/` — versão instalável (PWA) para publicar; veja PUBLICAR.md.

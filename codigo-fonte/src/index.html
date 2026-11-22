@@ -18,6 +18,8 @@
   <div id="photoNav" hidden>
     <button class="tbtn icon" id="photoPrev" title="Foto anterior (PageUp)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg></button>
     <select id="photoSel" title="Escolher foto"></select>
+    <button class="tbtn icon" id="btnCmp" title="Comparar com outra foto (arraste a divisória)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 2v20"/></svg></button>
+    <select id="cmpSel" hidden title="Foto para comparar"></select>
     <button class="tbtn icon" id="photoNext" title="Próxima foto (PageDown)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 5 7 7-7 7"/></svg></button>
   </div>
   <button class="tbtn icon" id="btnUndo" title="Desfazer (Ctrl+Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
@@ -35,6 +37,14 @@
         <option value="none">Sem legenda</option></select></div>
       <label class="lrow chk" id="lkTagsRow"><input type="checkbox" id="lkTags"> Mostrar o nome (A1, C1…) junto da marcação</label>
       <label class="lrow chk"><input type="checkbox" id="lkStamp"> Carimbo na imagem salva (versão, escala e data)</label>
+      <label class="lrow chk"><input type="checkbox" id="lkSbar"> Barra de escala na imagem</label>
+      <div id="lkSbarOpts" class="lsub" hidden>
+        <div class="lrow"><span>Posição</span><select id="lkSbarPos"><option value="br">Canto inferior direito</option><option value="bl">Canto inferior esquerdo</option><option value="tr">Canto superior direito</option><option value="tl">Canto superior esquerdo</option></select></div>
+        <div class="lrow"><span>Cor</span><select id="lkSbarColor"><option value="auto">Automática (contraste com o fundo)</option><option value="white">Branca</option><option value="black">Preta</option></select></div>
+        <div class="lrow"><span>Tamanho da barra <span id="lkSbarUnit"></span> (vazio = automático)</span><input type="number" id="lkSbarLen" min="0" step="any" placeholder="automático"></div>
+        <div class="lrow"><span>Espessura</span><input type="range" id="lkSbarThick" min="0.5" max="4" step="0.5"><output></output></div>
+        <label class="lrow chk"><input type="checkbox" id="lkSbarText"> Mostrar o valor embaixo da barra</label>
+      </div>
       <div class="lrow"><span>Tamanho do texto</span><input type="range" id="lkSize" min="9" max="24"><output id="lkSizeV"></output></div>
       <div class="lrow"><span>Cor da marcação selecionada</span><div id="lkColors"></div></div>
       <p class="lnote">Vale para a tela e para a imagem salva.</p>
@@ -52,6 +62,11 @@
 </header>
 
 <nav id="tools" aria-label="Ferramentas"></nav>
+<aside id="protoPanel" class="drawer" hidden aria-label="Protocolos">
+  <div class="dhead"><h2>Protocolos</h2><button class="tbtn" id="protoClose">Fechar</button></div>
+  <div class="dbody" id="protoBody"></div>
+  <input type="file" id="protoFile" accept=".json,application/json" hidden>
+</aside>
 
 <main id="stage">
   <div id="guide"></div>
@@ -60,7 +75,7 @@
     <div id="empty"><div class="box">
       <h1>Abra uma foto para começar</h1>
       <p>Arraste uma ou várias fotos para cá, cole com Ctrl+V ou use os botões abaixo. As fotos precisam ter um objeto de medida conhecida, como uma régua, para definir a escala.</p>
-      <button class="pbtn" id="btnOpen2">Abrir imagens</button> <button class="gbtn" id="btnFolder2">Abrir pasta</button>
+      <button class="pbtn" id="btnOpen2">Abrir imagens</button> <button class="gbtn" id="btnFolder2">Abrir pasta</button> <button class="gbtn" id="btnExamples">Usar fotos de exemplo</button>
       <p class="small">Também abre projetos salvos (.metricmod) e TIFF de microscópio.</p>
       <p class="small">Uso em pesquisa e ensino. Veja como cada medida é calculada no botão <b>i</b> do topo.</p>
       <div id="resume" hidden><b>Continuar de onde parou?</b><span id="resumeTxt"></span><div><button class="pbtn" id="btnResume">Continuar</button> <button class="gbtn" id="btnDiscard">Começar do zero</button></div></div>
@@ -76,8 +91,10 @@
     <label for="groupIn">Grupo das próximas medições</label>
     <div class="grow"><input id="groupIn" list="groupList" placeholder="Sem grupo (digite, ex.: Tratamento A)" autocomplete="off"><datalist id="groupList"></datalist>
     <button class="gbtn" id="groupAll" title="Coloca todas as medições desta foto no grupo escolhido">Aplicar à foto</button></div>
+    <label class="chk2" title="Acrescenta média, desvio, mínimo, máximo e densidade integrada de cinza às áreas"><input type="checkbox" id="measureInt"> Medir intensidade (cinza)</label>
   </div>
   <div id="resBody"></div>
+  <div id="chartBox" hidden><div class="ch"><span id="chartTitle"></span><button class="gbtn sm" id="chartCsv">Exportar valores</button></div><canvas id="chart"></canvas></div>
   <div id="resFoot">
     <button class="tbtn wide" id="btnCsv">Exportar para Excel (.csv)</button>
     <button class="tbtn" id="btnCopy">Copiar tabela</button>
@@ -89,9 +106,12 @@
   <div class="seg" id="aboutTabs"><button data-t="metodos" class="on">Métodos</button><button data-t="validacao">Validação</button><button data-t="citar">Como citar</button><button data-t="novidades">Novidades</button><button data-t="creditos">Créditos</button></div>
   <div id="aboutBody"></div>
 </aside>
+<div id="tour" hidden><div id="tourBox"><div id="tourTxt"></div><div class="row"><span id="tourStep"></span><button class="gbtn" id="tourSkip">Pular</button><button class="pbtn" id="tourNext">Próximo</button></div></div></div>
 <div id="updBar" hidden>Há uma versão nova do MetricMod. <button class="pbtn" id="btnUpd">Atualizar agora</button></div>
 <script>/*CORE*/</script>
 <script>/*ABOUT*/</script>
+<script>/*PROTOCOLS*/</script>
+<script>/*EXAMPLES*/</script>
 <script>/*APP*/</script>
 </body>
 </html>

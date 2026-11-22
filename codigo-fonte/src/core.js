@@ -55,8 +55,8 @@
       }
       xs.sort((a, b) => a - b);
       for (let k = 0; k + 1 < xs.length; k += 2) {
-        // pixel x incluído se x+0.5 ∈ [xa, xb)
-        const a = Math.max(x0, Math.ceil(xs[k] - 0.5)), b = Math.min(x1, Math.ceil(xs[k + 1] - 0.5));
+        // mesma regra de desempate do ImageJ (PolygonFiller): primeiro pixel = (int)(x + 0,5 + 1e-8)
+        const a = Math.max(x0, Math.floor(xs[k] + 0.5 + 1e-8)), b = Math.min(x1, Math.floor(xs[k + 1] + 0.5 + 1e-8));
         for (let x = a; x < b; x++) m.data[(y - y0) * m.w + (x - x0)] = 1;
       }
     }
@@ -806,9 +806,172 @@
       const um = /unit=([^\n\r]+)/.exec(desc), U = { micron: 'µm', um: 'µm', 'µm': 'µm', 'μm': 'µm', microns: 'µm', nm: 'nm', mm: 'mm', cm: 'cm', m: 'm', meter: 'm', inch: 'pol', km: 'km' };
       if (um && xr > 0) { const u = U[um[1].trim().replace(/\\/g, '').toLowerCase()]; if (u) cal = { ppu: xr, unit: u, source: 'ImageJ' }; }
       else if (ru === 3 && xr > 0) cal = { ppu: xr, unit: 'cm', source: 'TIFF' };
-      pages.push({ W, H, rgba, cal, bits: bps });
+      let gray = null; // valores originais para medir intensidade (cinza de 16/32 bits, ou 8 bits)
+      if (spp === 1 && photo !== 3) { gray = new Float32Array(W * H); for (let i = 0; i < W * H; i++) gray[i] = photo === 0 && bps === 8 ? 255 - raw[i] : raw[i]; }
+      pages.push({ W, H, rgba, cal, bits: bps, gray });
     }
     return { pages, total };
+  };
+
+  /* ---------- Intensidade (como o ImageJ: cinza de RGB = (R+G+B)/3, sem pesos) ---------- */
+  // raw: Float32Array opcional com os valores originais (TIFF de 16/32 bits); senão usa a cor.
+  MM.grayAt = (rgba, raw, i) => raw ? raw[i] : Math.floor((rgba[i * 4] + rgba[i * 4 + 1] + rgba[i * 4 + 2]) / 3 + 0.5); // arredonda como o ImageJ
+  MM.intensityStats = (m, rgba, W, raw) => {
+    let n = 0, s = 0, s2 = 0, mn = Infinity, mx = -Infinity;
+    for (let j = 0; j < m.h; j++) for (let i = 0; i < m.w; i++) {
+      if (!m.data[j * m.w + i]) continue;
+      const v = MM.grayAt(rgba, raw, (j + m.y) * W + i + m.x); n++; s += v; s2 += v * v; if (v < mn) mn = v; if (v > mx) mx = v;
+    }
+    const mean = n ? s / n : NaN, sd = n > 1 ? Math.sqrt(Math.max(0, (s2 - s * s / n) / (n - 1))) : 0;
+    return { n, mean, sd, min: n ? mn : NaN, max: n ? mx : NaN, rawIntDen: s };
+  };
+  // Histograma de cinza de uma máscara (ou da imagem inteira se m == null), em 256 classes.
+  MM.histogram = (m, rgba, W, H, raw) => {
+    const h = new Float64Array(256); let lo = 0, hi = 255;
+    if (raw) { lo = Infinity; hi = -Infinity; for (let i = 0; i < W * H; i++) { if (raw[i] < lo) lo = raw[i]; if (raw[i] > hi) hi = raw[i]; } if (hi <= lo) hi = lo + 1; }
+    const add = (i) => { const v = MM.grayAt(rgba, raw, i); h[Math.max(0, Math.min(255, Math.floor((v - lo) / (hi - lo) * 255.999)))]++; };
+    if (m) { for (let j = 0; j < m.h; j++) for (let i = 0; i < m.w; i++) if (m.data[j * m.w + i]) add((j + m.y) * W + i + m.x); }
+    else for (let i = 0; i < W * H; i++) add(i);
+    return { h, lo, hi };
+  };
+  // Perfil de intensidade ao longo de uma linha (amostras a cada 1 px, interpolação bilinear).
+  MM.lineProfile = (rgba, W, H, l, raw) => {
+    const L = Math.hypot(l[2] - l[0], l[3] - l[1]), n = Math.max(2, Math.round(L) + 1), out = [];
+    const g = (x, y) => MM.grayAt(rgba, raw, y * W + x);
+    for (let k = 0; k < n; k++) {
+      const t = k / (n - 1), x = l[0] + (l[2] - l[0]) * t - 0.5, y = l[1] + (l[3] - l[1]) * t - 0.5;
+      const x0 = Math.max(0, Math.min(W - 1, Math.floor(x))), y0 = Math.max(0, Math.min(H - 1, Math.floor(y))), x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);
+      const fx = Math.max(0, Math.min(1, x - x0)), fy = Math.max(0, Math.min(1, y - y0));
+      out.push((g(x0, y0) * (1 - fx) + g(x1, y0) * fx) * (1 - fy) + (g(x0, y1) * (1 - fx) + g(x1, y1) * fx) * fy);
+    }
+    return { values: out, step: L / (n - 1) };
+  };
+  // Perímetro da elipse (fórmula de Ramanujan, a mesma do ImageJ para seleções ovais).
+  MM.ovalPerimeter = (w, h) => { const a = w / 2, b = h / 2; return Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b))); };
+  MM.ovalPolygon = (x, y, w, h, n) => { n = n || Math.max(180, Math.ceil(Math.PI * (w + h) / 2)); /* ~1 vértice a cada 2 px de contorno */ const pts = []; for (let k = 0; k < n; k++) { const t = 2 * Math.PI * k / n; pts.push([x + w / 2 + w / 2 * Math.cos(t), y + h / 2 + h / 2 * Math.sin(t)]); } return pts; };
+  MM.angle3 = (a, v, b) => { const a1 = Math.atan2(a[1] - v[1], a[0] - v[0]), a2 = Math.atan2(b[1] - v[1], b[0] - v[0]); let d = Math.abs(a1 - a2) * 180 / Math.PI; if (d > 180) d = 360 - d; return d; };
+  // Comprimento "redondo" para a barra de escala: 1, 2 ou 5 × 10^k, perto do alvo.
+  MM.niceLength = (target) => { if (!(target > 0)) return 1; const e = Math.pow(10, Math.floor(Math.log10(target))), f = target / e; return (f >= 5 ? 5 : f >= 2 ? 2 : 1) * e; };
+
+  /* ---------- Correção de iluminação desigual (subtrair fundo) ---------- */
+  // Estima o fundo numa cópia reduzida: filtro de máximo (fundo claro) ou mínimo (fundo escuro) com raio ~ objeto,
+  // suavização e ampliação. Fundo claro: divide (campo plano); fundo escuro: subtrai. Retorna nova imagem RGBA.
+  MM.flatField = (rgba, W, H, radius) => {
+    const f = Math.max(1, Math.round(radius / 6)), w = Math.ceil(W / f), h = Math.ceil(H / f), r = Math.max(2, Math.round(radius / f));
+    const small = [new Float32Array(w * h), new Float32Array(w * h), new Float32Array(w * h)];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) {
+      let s = 0, n = 0; for (let j = y * f; j < Math.min(H, (y + 1) * f); j++) for (let i = x * f; i < Math.min(W, (x + 1) * f); i++) { s += rgba[(j * W + i) * 4 + c]; n++; }
+      small[c][y * w + x] = s / n;
+    }
+    let lum = []; for (let x = 0; x < w; x++) { lum.push(small[0][x] + small[1][x] + small[2][x]); lum.push(small[0][(h - 1) * w + x] + small[1][(h - 1) * w + x] + small[2][(h - 1) * w + x]); }
+    lum.sort((a, b) => a - b); const light = lum[lum.length >> 1] / 3 > 110;
+    const filt = (a, isMax) => { // separável
+      const t = new Float32Array(w * h), o = new Float32Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = isMax ? -Infinity : Infinity; for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) v = isMax ? Math.max(v, a[y * w + k]) : Math.min(v, a[y * w + k]); t[y * w + x] = v; }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = isMax ? -Infinity : Infinity; for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) v = isMax ? Math.max(v, t[k * w + x]) : Math.min(v, t[k * w + x]); o[y * w + x] = v; }
+      return o;
+    };
+    const blur = (a) => { let o = a; for (let it = 0; it < 3; it++) { const t = new Float32Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, n = 0; for (let dy = -r; dy <= r; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue; for (let dx = -r; dx <= r; dx += Math.max(1, r >> 1)) { const xx = x + dx; if (xx < 0 || xx >= w) continue; s += o[yy * w + xx]; n++; } } t[y * w + x] = s / n; } o = t; } return o; };
+    // abertura/fechamento: tira os objetos e volta ao nível do fundo
+    const bg = small.map((a) => blur(filt(filt(a, light), !light)));
+    const out = new Uint8ClampedArray(rgba.length), mean = bg.map((b) => b.reduce((s2, v) => s2 + v, 0) / b.length);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const sx = Math.min(w - 1.001, Math.max(0, (x + 0.5) / f - 0.5)), sy = Math.min(h - 1.001, Math.max(0, (y + 0.5) / f - 0.5)), x0 = Math.floor(sx), y0 = Math.floor(sy), fx = sx - x0, fy = sy - y0;
+      const k = (y * W + x) * 4;
+      for (let c = 0; c < 3; c++) {
+        const b = bg[c], v = (b[y0 * w + x0] * (1 - fx) + b[y0 * w + x0 + 1] * fx) * (1 - fy) + (b[(y0 + 1) * w + x0] * (1 - fx) + b[(y0 + 1) * w + x0 + 1] * fx) * fy;
+        out[k + c] = light ? rgba[k + c] * mean[c] / Math.max(1, v) : rgba[k + c] - v + mean[c];
+      }
+      out[k + 3] = 255;
+    }
+    return out;
+  };
+
+  /* ---------- Fenda de cicatrização (scratch assay) ---------- */
+  // A fenda é a região lisa (pouca textura) entre as camadas de células: desvio padrão local de cinza,
+  // limiar de Otsu, maior região lisa que não seja só a borda; furos preenchidos.
+  MM.detectGap = (rgba, W, H, win) => {
+    const N = W * H, g = new Float32Array(N); for (let i = 0; i < N; i++) g[i] = (rgba[i * 4] + rgba[i * 4 + 1] + rgba[i * 4 + 2]) / 3;
+    const r = win || Math.max(4, Math.round(Math.max(W, H) / 120));
+    const I = new Float64Array((W + 1) * (H + 1)), I2 = new Float64Array((W + 1) * (H + 1));
+    for (let y = 0; y < H; y++) { let s = 0, s2 = 0; for (let x = 0; x < W; x++) { const v = g[y * W + x]; s += v; s2 += v * v; I[(y + 1) * (W + 1) + x + 1] = I[y * (W + 1) + x + 1] + s; I2[(y + 1) * (W + 1) + x + 1] = I2[y * (W + 1) + x + 1] + s2; } }
+    const sd = new Float32Array(N); let mx = 0;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const x0 = Math.max(0, x - r), x1 = Math.min(W, x + r + 1), y0 = Math.max(0, y - r), y1 = Math.min(H, y + r + 1), n = (x1 - x0) * (y1 - y0);
+      const S1 = I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] - I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0], S2 = I2[y1 * (W + 1) + x1] - I2[y0 * (W + 1) + x1] - I2[y1 * (W + 1) + x0] + I2[y0 * (W + 1) + x0];
+      const v = Math.sqrt(Math.max(0, S2 / n - (S1 / n) ** 2)); sd[y * W + x] = v; if (v > mx) mx = v;
+    }
+    const hist = new Array(256).fill(0), q = new Uint8Array(N); for (let i = 0; i < N; i++) { q[i] = Math.min(255, Math.round(sd[i] / (mx || 1) * 255)); hist[q[i]]++; }
+    const t = MM.otsu(hist), bin = new Uint8Array(N); for (let i = 0; i < N; i++) bin[i] = q[i] <= t ? 1 : 0;
+    const { lab, comps } = MM.label(bin, W, H); if (!comps.length) return null;
+    comps.sort((a, b) => b.area - a.area); const c = comps[0];
+    if (c.area < N * 0.01) return null;
+    // refinamento da borda: a janela grande "invade" a fenda; numa faixa de ±(r+2) px em volta da borda,
+    // cada pixel é reclassificado com uma janela pequena (raio 2)
+    const core = new Uint8Array(N); for (let i = 0; i < N; i++) core[i] = lab[i] === c.label ? 1 : 0;
+    const din = MM.distanceTo(core, W, H, 0), dout = MM.distanceTo(core, W, H, 1), band = (i) => din[i] <= 2 || (dout[i] > 0 && dout[i] <= r + 2);
+    const sd2 = new Float32Array(N), r2 = 2, bh = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = y * W + x; if (!band(i) && !(core[i] && din[i] > r + 3)) continue;
+      const x0 = Math.max(0, x - r2), x1 = Math.min(W, x + r2 + 1), y0 = Math.max(0, y - r2), y1 = Math.min(H, y + r2 + 1), n = (x1 - x0) * (y1 - y0);
+      const S1 = I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] - I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0], S2 = I2[y1 * (W + 1) + x1] - I2[y0 * (W + 1) + x1] - I2[y1 * (W + 1) + x0] + I2[y0 * (W + 1) + x0];
+      sd2[i] = Math.sqrt(Math.max(0, S2 / n - (S1 / n) ** 2));
+    }
+    // limiar: entre a textura típica da fenda (núcleo) e a das células (fora da faixa)
+    const inG = [], outC = [];
+    for (let i = 0; i < N; i += 3) { if (core[i] && din[i] > r + 3) inG.push(sd2[i]); }
+    for (let i = 0; i < N; i += 3) if (!core[i] && dout[i] > r + 3) { const x = i % W, y = (i / W) | 0, x0 = Math.max(0, x - r2), x1 = Math.min(W, x + r2 + 1), y0 = Math.max(0, y - r2), y1 = Math.min(H, y + r2 + 1), n = (x1 - x0) * (y1 - y0);
+      const S1 = I[y1 * (W + 1) + x1] - I[y0 * (W + 1) + x1] - I[y1 * (W + 1) + x0] + I[y0 * (W + 1) + x0], S2 = I2[y1 * (W + 1) + x1] - I2[y0 * (W + 1) + x1] - I2[y1 * (W + 1) + x0] + I2[y0 * (W + 1) + x0]; outC.push(Math.sqrt(Math.max(0, S2 / n - (S1 / n) ** 2))); }
+    const med = (a) => { a.sort((p, q) => p - q); return a.length ? a[a.length >> 1] : 0; };
+    const T2 = (med(inG) + med(outC)) / 2, fin = new Uint8Array(N);
+    for (let i = 0; i < N; i++) fin[i] = band(i) ? (sd2[i] <= T2 ? 1 : 0) : core[i];
+    // abertura leve (remove pontinhos lisos entre as células) e a região ligada ao núcleo
+    const op = MM.distanceTo(fin, W, H, 0); for (let i = 0; i < N; i++) if (fin[i] && op[i] < 1.5 && !core[i]) fin[i] = 0;
+    const { lab: l2, comps: c2 } = MM.label(fin, W, H); c2.sort((a, b) => b.area - a.area);
+    // a janela pequena ainda avança cerca de r2 px na fenda: devolve essa faixa
+    const keep = new Uint8Array(N); for (let i = 0; i < N; i++) keep[i] = l2[i] === c2[0].label ? 1 : 0;
+    const dk = MM.distanceTo(keep, W, H, 1); for (let i = 0; i < N; i++) if (!keep[i] && dk[i] <= r2) keep[i] = 1;
+    const { lab: l3, comps: c3 } = MM.label(keep, W, H); c3.sort((a, b) => b.area - a.area);
+    const res = MM.fillHoles(MM.maskFromLabel(l3, W, c3[0])), n = MM.maskCount(res);
+    // fenda de verdade: atravessa a foto de uma borda à outra e ocupa entre 3% e 60% dela
+    const spans = res.h >= H * 0.8 || res.w >= W * 0.8;
+    if (!spans || n < N * 0.03 || n > N * 0.6) return null;
+    return res;
+  };
+
+  /* ---------- Bandas de gel: densidade da banda menos o fundo local ---------- */
+  // rect = [x, y, w, h]. Fundo = média aparada dos pixels da moldura de 2 px em volta do retângulo.
+  // dark=true: bandas escuras em fundo claro (inverte). Retorna densidade (soma de sinal acima do fundo) e fundo.
+  MM.bandDensity = (rgba, W, H, rect, dark, raw) => {
+    const [x0, y0, w, h] = rect.map(Math.round), ring = [];
+    const val = (x, y) => { const v = MM.grayAt(rgba, raw, y * W + x); return dark ? 255 - v : v; };
+    for (let y = y0 - 2; y < y0 + h + 2; y++) for (let x = x0 - 2; x < x0 + w + 2; x++) {
+      if (x < 0 || y < 0 || x >= W || y >= H) continue;
+      if (x >= x0 && x < x0 + w && y >= y0 && y < y0 + h) continue; ring.push(val(x, y));
+    }
+    // fundo = média aparada da moldura (sem os 25% mais baixos e mais altos): não dá saltos de nível inteiro como a mediana
+    ring.sort((a, b) => a - b); const q0 = Math.floor(ring.length * 0.25), q1 = Math.max(q0 + 1, Math.ceil(ring.length * 0.75));
+    let bs = 0; for (let i = q0; i < q1; i++) bs += ring[i]; const bg = ring.length ? bs / (q1 - q0) : 0;
+    // soma com sinal: o ruído abaixo do fundo compensa o de cima (sem viés)
+    let s = 0, n = 0; for (let y = Math.max(0, y0); y < Math.min(H, y0 + h); y++) for (let x = Math.max(0, x0); x < Math.min(W, x0 + w); x++) { s += val(x, y) - bg; n++; }
+    return { density: s, background: bg, pixels: n };
+  };
+
+  /* ---------- Transformações da foto ---------- */
+  MM.rotate90 = (rgba, W, H, cw) => { const o = new Uint8ClampedArray(rgba.length); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const nx = cw ? H - 1 - y : y, ny = cw ? x : W - 1 - x, s = (y * W + x) * 4, d = (ny * H + nx) * 4; o[d] = rgba[s]; o[d + 1] = rgba[s + 1]; o[d + 2] = rgba[s + 2]; o[d + 3] = 255; } return { rgba: o, W: H, H: W }; };
+  MM.flip = (rgba, W, H, horiz) => { const o = new Uint8ClampedArray(rgba.length); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const sx = horiz ? W - 1 - x : x, sy = horiz ? y : H - 1 - y, s = (sy * W + sx) * 4, d = (y * W + x) * 4; o[d] = rgba[s]; o[d + 1] = rgba[s + 1]; o[d + 2] = rgba[s + 2]; o[d + 3] = 255; } return { rgba: o, W, H }; };
+  MM.crop = (rgba, W, H, r) => { const x0 = Math.max(0, Math.round(r[0])), y0 = Math.max(0, Math.round(r[1])), w = Math.min(W - x0, Math.round(r[2])), h = Math.min(H - y0, Math.round(r[3])), o = new Uint8ClampedArray(w * h * 4); for (let y = 0; y < h; y++) o.set(rgba.subarray(((y + y0) * W + x0) * 4, ((y + y0) * W + x0 + w) * 4), y * w * 4); return { rgba: o, W: w, H: h }; };
+  // Rotação livre (graus, sentido horário), bilinear, aumentando a área para não cortar; cantos pretos.
+  MM.rotate = (rgba, W, H, deg) => {
+    const a = deg * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), nW = Math.ceil(Math.abs(W * c) + Math.abs(H * s)), nH = Math.ceil(Math.abs(W * s) + Math.abs(H * c));
+    const o = new Uint8ClampedArray(nW * nH * 4), cx = W / 2, cy = H / 2, ncx = nW / 2, ncy = nH / 2;
+    for (let y = 0; y < nH; y++) for (let x = 0; x < nW; x++) {
+      const dx = x + 0.5 - ncx, dy = y + 0.5 - ncy, sx = c * dx + s * dy + cx - 0.5, sy = -s * dx + c * dy + cy - 0.5, d = (y * nW + x) * 4; o[d + 3] = 255;
+      if (sx < -0.5 || sy < -0.5 || sx > W - 0.5 || sy > H - 0.5) continue;
+      const x0 = Math.max(0, Math.min(W - 1, Math.floor(sx))), y0 = Math.max(0, Math.min(H - 1, Math.floor(sy))), x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1), fx = Math.max(0, Math.min(1, sx - x0)), fy = Math.max(0, Math.min(1, sy - y0));
+      for (let k = 0; k < 3; k++) o[d + k] = (rgba[(y0 * W + x0) * 4 + k] * (1 - fx) + rgba[(y0 * W + x1) * 4 + k] * fx) * (1 - fy) + (rgba[(y1 * W + x0) * 4 + k] * (1 - fx) + rgba[(y1 * W + x1) * 4 + k] * fx) * fy;
+    }
+    return { rgba: o, W: nW, H: nH };
   };
 
   /* ---------- Placa: maior círculo da foto ---------- */
