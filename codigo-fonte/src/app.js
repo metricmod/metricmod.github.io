@@ -1491,10 +1491,19 @@
     const p = S.photos[S.cur]; if (!p) return;
     Object.assign(p, { objs: S.objs, seq: S.seq, undo: S.undo, redo: S.redo, view: { ...S.view }, scale: S.scale });
   }
+  // Lê a foto sem conversão de perfil de cor (valores do arquivo, como o ImageJ); a rotação EXIF do celular é aplicada.
+  async function decodeRaw(file) {
+    if (!window.createImageBitmap) return null;
+    try {
+      const bm = await createImageBitmap(file, { colorSpaceConversion: 'none', imageOrientation: 'from-image', premultiplyAlpha: 'none' });
+      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; c.getContext('2d').drawImage(bm, 0, 0); bm.close && bm.close(); return c;
+    } catch { return null; }
+  }
   function decode(p) {
-    return new Promise((res, rej) => {
+    return new Promise(async (res, rej) => {
       if (p.canvas) return res(p.canvas);
       if (p.src) return res(p.src);
+      const raw = await decodeRaw(p.file); if (raw) return res(raw);
       const url = URL.createObjectURL(p.file), img = new Image();
       img.onload = () => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); URL.revokeObjectURL(url); res(c); };
       img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };

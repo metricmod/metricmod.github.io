@@ -68,7 +68,7 @@
         d: 'Transformada de Hough para círculos, com votos na direção do gradiente, numa cópia reduzida da foto. Entre os candidatos, escolhe-se o centro com o círculo mais nítido e, nele, o maior raio com borda forte. Só é aceito um círculo cuja borda aparece em pelo menos 60% da volta.',
         r: 'Kimme, C.; Ballard, D.; Sklansky, J. Finding circles by an array of accumulators. <i>Communications of the ACM</i>, v. 18, n. 2, p. 120–122, 1975.' },
       { t: 'Leitura de imagens',
-        d: 'JPG, PNG, WebP, BMP e GIF são lidos pelo navegador. TIFF é lido pelo próprio MetricMod (sem compressão, LZW, PackBits ou Deflate; 1, 8, 16 ou 32 bits; em faixas ou blocos; várias páginas). Imagens de 16 e 32 bits são exibidas com o contraste ajustado do mínimo ao máximo, como no ImageJ; as medidas geométricas não dependem desse ajuste.' },
+        d: 'JPG, PNG, WebP, BMP e GIF são lidos pelo navegador, sem conversão de perfil de cor, para que os valores sejam os do arquivo (como no ImageJ). TIFF é lido pelo próprio MetricMod (sem compressão, LZW, PackBits ou Deflate; 1, 8, 16 ou 32 bits; em faixas ou blocos; várias páginas). Imagens de 16 e 32 bits são exibidas com o contraste ajustado do mínimo ao máximo, como no ImageJ; as medidas geométricas não dependem desse ajuste.' },
     ],
 
     // Testes já feitos (imagens sintéticas com valor real conhecido).
@@ -92,6 +92,7 @@
       ['Fechamento da fenda (largura 220 → 110 px)', '≈ 50%', '50,2%', ''],
       ['Subtrair fundo (rolling ball): 10 comparações, raios 5 a 150, fundo claro e escuro, cinza e cor', 'ImageJ 1.54u', '26,4 milhões de valores idênticos', '0'],
       ['Desvio do ágar numa placa com luz irregular (10.607 pontos)', '8,06 sem correção', '2,42 com correção', '−70%'],
+      ['Leitura de JPG e PNG no navegador (6 imagens, 6,16 milhões de pixels)', 'cinza do ImageJ 1.54u', 'idênticos', '0'],
       ['Girar 90° quatro vezes; espelhar duas vezes', 'foto original', 'pixels idênticos', '0'],
     ],
     validationNote: 'Testes feitos com imagens geradas por computador, em que o valor real é conhecido, e com o ImageJ 1.54u compilado do código-fonte oficial. A validação com amostras reais de laboratório está em andamento e será publicada aqui.',
@@ -104,6 +105,7 @@
     ],
 
     changelog: [
+      ['0.7.3', 'Fotos lidas sem conversão de perfil de cor, com os mesmos valores que o ImageJ lê (conferido em JPG e PNG, 7,5 milhões de pixels).'],
       ['0.7.2', 'TIFF de 1 bit: valores de intensidade 0 e 255, como no ImageJ (antes eram 0 e 1). Testes de validação publicados junto do código-fonte (pasta testes).'],
       ['0.7.1', 'Corrigir iluminação agora usa o rolling ball do ImageJ, com resultado idêntico pixel a pixel; o número de validação anterior (17,2 → 1,8) foi medido de forma que favorecia o resultado e foi substituído. Licença MIT.'],
       ['0.7', 'Protocolos prontos (sementes, colônias, área foliar, cobertura, fluorescência CTCF, cicatrização, bandas de gel) e protocolos próprios, salvos no aparelho, com exportação e importação; ângulo; retângulo e elipse; medidas de intensidade; barra de escala; recortar, girar e endireitar; ajustes de imagem; corrigir iluminação desigual; porcentagem de cobertura; bandas de gel; perfil de linha e histograma; comparar fotos lado a lado; fotos de exemplo e tutorial de primeiro uso.'],
