@@ -145,7 +145,9 @@
     const ins = (x, y, d) => {
       switch (d & 3) { case 0: return inside(x, y); case 1: return inside(x, y - 1); case 2: return inside(x - 1, y - 1); default: return inside(x - 1, y); }
     };
-    const startDirection = 1; let x = startX, y = startY, direction = startDirection, guard = 0;
+    // como Wand.traceEdge do ImageJ: começa subindo se o pixel de partida é de dentro; descendo, se é de fora
+    let startDirection = 1; if (!inside(startX, startY)) { startDirection = 3; startY++; }
+    let x = startX, y = startY, direction = startDirection, guard = 0;
     do {
       let nd = direction + 1;
       do { if (ins(x, y, nd)) break; nd--; } while (nd >= direction);
@@ -163,8 +165,9 @@
     const { lab, comps } = MM.label(m.data, m.w, m.h), res = [];
     for (const c of comps) {
       const inside = (x, y) => x >= 0 && y >= 0 && x < m.w && y < m.h && lab[y * m.w + x] === c.label;
-      // ImageJ começa na borda esquerda do primeiro pixel (raster) do componente, subindo.
-      const sx = c.start % m.w, sy = (c.start / m.w) | 0;
+      // Como o Analyze Particles do ImageJ (Wand.autoOutline): a partir do primeiro pixel do componente na ordem de
+      // varredura, anda para a direita até sair do objeto e começa o contorno nessa borda.
+      let sx = c.start % m.w; const sy = (c.start / m.w) | 0; do sx++; while (inside(sx, sy));
       const poly = MM.traceEdge(inside, sx, sy);
       res.push({ poly: poly.map(([x, y]) => [x + m.x, y + m.y]), area: c.area });
     }
@@ -186,18 +189,21 @@
     return sumdx + sumdy - nCorners * (2 - Math.SQRT2);
   };
 
-  // Comprimento de polígono/linha. smooth=true aplica média móvel de 3 pontos (como o ImageJ faz em traçado à mão livre).
+  // Comprimento de polígono/linha. smooth=true: traçado à mão livre, calculado como no ImageJ 1.54
+  // (PolygonRoi.getSmoothedLineLength / getSmoothedPerimeter: média móvel de 3 pontos ao longo da linha aberta,
+  // mais o segmento de fechamento sem suavização).
   MM.polyLength = (pts, closed, smooth) => {
-    let p = pts;
-    if (smooth && pts.length > 3) {
-      const n = pts.length; p = [];
-      for (let i = 0; i < n; i++) {
-        const a = pts[closed ? (i + n - 1) % n : Math.max(0, i - 1)], b = pts[i], c = pts[closed ? (i + 1) % n : Math.min(n - 1, i + 1)];
-        p.push([(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3]);
-      }
+    const n = pts.length, d = (dx, dy) => Math.sqrt(dx * dx + dy * dy);
+    if (smooth && n > 2) {
+      const X = (i) => pts[i][0], Y = (i) => pts[i][1];
+      let L = d((X(0) + X(1) + X(2)) / 3 - X(0), (Y(0) + Y(1) + Y(2)) / 3 - Y(0));
+      for (let i = 1; i < n - 2; i++) L += d((X(i + 2) - X(i - 1)) / 3, (Y(i + 2) - Y(i - 1)) / 3);
+      L += d(X(n - 1) - (X(n - 3) + X(n - 2) + X(n - 1)) / 3, Y(n - 1) - (Y(n - 3) + Y(n - 2) + Y(n - 1)) / 3);
+      if (closed) L += d(X(n - 1) - X(0), Y(n - 1) - Y(0));
+      return L;
     }
-    let L = 0; for (let i = 1; i < p.length; i++) L += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]);
-    if (closed && p.length > 2) L += Math.hypot(p[0][0] - p[p.length - 1][0], p[0][1] - p[p.length - 1][1]);
+    let L = 0; for (let i = 1; i < n; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    if (closed && n > 2) L += Math.hypot(pts[0][0] - pts[n - 1][0], pts[0][1] - pts[n - 1][1]);
     return L;
   };
 
@@ -837,7 +843,8 @@
   // Perfil de intensidade ao longo de uma linha (amostras a cada 1 px, interpolação bilinear).
   MM.lineProfile = (rgba, W, H, l, raw) => {
     const L = Math.hypot(l[2] - l[0], l[3] - l[1]), n = Math.max(2, Math.round(L) + 1), out = [];
-    const g = (x, y) => MM.grayAt(rgba, raw, y * W + x);
+    // como o ImageJ no perfil: em cor, (R + G + B) / 3 sem arredondar; coordenada inteira = canto do pixel (no ImageJ, centro)
+    const g = (x, y) => { const i = y * W + x; return raw ? raw[i] : (rgba[i * 4] + rgba[i * 4 + 1] + rgba[i * 4 + 2]) / 3; };
     for (let k = 0; k < n; k++) {
       const t = k / (n - 1), x = l[0] + (l[2] - l[0]) * t - 0.5, y = l[1] + (l[3] - l[1]) * t - 0.5;
       const x0 = Math.max(0, Math.min(W - 1, Math.floor(x))), y0 = Math.max(0, Math.min(H - 1, Math.floor(y))), x1 = Math.min(W - 1, x0 + 1), y1 = Math.min(H - 1, y0 + 1);

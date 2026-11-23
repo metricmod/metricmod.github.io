@@ -13,6 +13,8 @@ executado sem interface por `RunMacro` (`ij.IJ.runMacroFile`). Qualquer ImageJ 1
 | `ij-intensidade.ijm` | `ij_int.csv` (intensidade de 3 regiões e ângulo) | `test-int.js` |
 | `rel/comp.ijm` | `rel/g*.txt`, `rel/otsu_ij.csv`, `rel/gel_ij.csv` | `rel/comp.js` |
 | `rel/rb.ijm`, `rel/rb2.ijm` | `rel/rb*.txt`, `rel/rbRGB*.png` (Subtract Background) | `rel/rbtest.js`, `rel/ilum.js` |
+| `ij-perfil.ijm` | `ij_perfil.csv` (perfil de 3 linhas e histogramas) | `test-perfil.js` |
+| `ij-maolivre.ijm` | `ij_maolivre.csv` (seleção e linha à mão livre; pontos em `maolivre.json`, `linhalivre.json`) | `test-maolivre.js` |
 | `ij-tiff.ijm` | `rel/tif-*` (TIFF de 1, 16 e 32 bits e paleta lidos pelo ImageJ) | `test-tiff-ij.mjs` |
 | `rel/col.ijm` | `rel/col_ij.csv` (contagem com Analyze Particles) | relatório, Tabela 8 |
 

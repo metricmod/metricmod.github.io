@@ -1,4 +1,4 @@
-# MetricMod — versão 0.7.3
+# MetricMod — versão 0.7.4
 
 Abra **MetricMod.html** com dois cliques (Chrome ou Edge). Funciona sem internet e sem instalar nada.
 Versão instalável publicada em **https://metricmod.github.io/** (veja PUBLICAR.md).
@@ -79,7 +79,7 @@ Atalhos: roda do mouse = zoom · botão direito ou Espaço + arrastar = mover a 
 
 ## Precisão
 Os cálculos seguem os algoritmos do ImageJ 1.54u e foram conferidos contra ele:
-área, Feret (comprimento) e Feret mínimo (largura) idênticos; perímetro com diferença máxima de 0,15%.
+área, perímetro, Feret (comprimento), Feret mínimo (largura), circularidade, intensidade, perfil de linha, histograma e subtração de fundo idênticos.
 Nas áreas, "Comprimento" e "Largura" são o maior e o menor diâmetro (Feret), como no ImageJ.
 
 Teste de objetos encostados: 18 objetos, o mesmo resultado do Watershed do ImageJ na mesma imagem.
