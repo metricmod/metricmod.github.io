@@ -83,15 +83,21 @@
   const thresholdFromSens = () => { const o = S.det ? S.det.threshold : 128; return Math.max(1, Math.min(254, Math.round(o * (2 - S.sens / 50)))); };
   // Imagem usada nas detecções: a original, opcionalmente com iluminação corrigida e/ou com os ajustes de imagem.
   // As medidas de intensidade usam sempre a original (S.rgba ou os valores brutos do TIFF em S.raw).
+  // Na contagem de colônias a correção não é usada: o modelo de cor já compara cada colônia com o anel de fundo em volta,
+  // e a subtração de fundo muda as cores que o modelo aprende.
+  const flatOn = () => !!S.flat && S.tool !== 'colony';
+  const anaKey = () => `${flatOn()}|${!!(S.adj && S.adj.use && adjActive())}`;
+  const syncAna = () => { if (S.anaFor !== anaKey()) { S.ana = null; S.det = null; S.grad = null; S.blur = null; S.covBase = null; S.anaFor = anaKey(); } };
   const ana = () => {
-    if (!S.flat && !(S.adj && S.adj.use && adjActive())) return S.rgba;
-    if (!S.ana) { let a = S.rgba; if (S.flat) a = MM.flatField(a, S.W, S.H, Math.max(20, Math.round(Math.max(S.W, S.H) / 20))); if (S.adj && S.adj.use && adjActive()) a = adjustRGBA(a); S.ana = a; }
+    syncAna();
+    if (!flatOn() && !(S.adj && S.adj.use && adjActive())) return S.rgba;
+    if (!S.ana) { let a = S.rgba; if (flatOn()) a = MM.subtractBackgroundRGBA(a, S.W, S.H, Math.max(20, Math.round(Math.max(S.W, S.H) / 20))); if (S.adj && S.adj.use && adjActive()) a = adjustRGBA(a); S.ana = a; }
     return S.ana;
   };
   const resetAna = () => { S.ana = null; S.det = null; S.grad = null; S.blur = null; S.covBase = null; };
-  const ensureDet = () => { if (!S.det) S.det = MM.backgroundDistance(ana(), S.W, S.H); return S.det; };
-  const ensureGrad = () => { if (!S.grad) S.grad = MM.gradient(ana(), S.W, S.H); return S.grad; };
-  const ensureBlur = () => { if (!S.blur) S.blur = MM.blurRGBA(ana(), S.W, S.H); return S.blur; };
+  const ensureDet = () => { syncAna(); if (!S.det) S.det = MM.backgroundDistance(ana(), S.W, S.H); return S.det; };
+  const ensureGrad = () => { syncAna(); if (!S.grad) S.grad = MM.gradient(ana(), S.W, S.H); return S.grad; };
+  const ensureBlur = () => { syncAna(); if (!S.blur) S.blur = MM.blurRGBA(ana(), S.W, S.H); return S.blur; };
   const objName = (o) => `${PREFIX[o.kind]}${o.n}`;
 
   /* ---------- desfazer ---------- */
@@ -592,8 +598,7 @@
           `<div class="ctl"><label title="Quanto a cor pode variar">Cor <input type="range" id="gCTol" min="1" max="6" step="0.25" value="${P.tol}"></label>
            <label title="Quanto o tamanho pode variar em relação ao exemplo">Tamanho <input type="range" id="gCSize" min="1.5" max="8" step="0.5" value="${P.size}"></label>
            <label title="Mais à direita aceita formatos menos redondos">Formato <input type="range" id="gCShape" min="0.05" max="0.6" step="0.05" value="${P.shape}"></label>
-           <label><input type="checkbox" id="gCClu" ${P.clusters ? 'checked' : ''}> Dividir colônias encostadas</label>
-           <label><input type="checkbox" id="gFlat" ${S.flat ? 'checked' : ''}> Corrigir iluminação desigual</label></div>
+           <label><input type="checkbox" id="gCClu" ${P.clusters ? 'checked' : ''}> Dividir colônias encostadas</label></div>
            <div class="ctl"><button class="gbtn" data-a="colExample">Adicionar outro exemplo</button><button class="gbtn" data-a="colPlate">Detectar placa de novo</button><button class="gbtn" data-a="colRoi">Desenhar a placa</button>
            <button class="gbtn" data-a="colNew">Nova placa</button>${S.photos.length > 1 ? `<button class="gbtn" data-a="colAllPhotos" title="Usa os mesmos exemplos e ajustes; a placa é detectada em cada foto">Contar em todas as ${S.photos.length} fotos</button>` : ''}<button class="pbtn" data-a="close">Concluir</button></div>`;
       }
@@ -825,7 +830,7 @@
 
   /* ---------- cobertura (%) ---------- */
   S.covMode = 'diff'; S.covSens = 50; S.covRoi = 'whole';
-  function covBase() { // imagem 0..255 em que "coberto" é alto, e o limiar de Otsu dela
+  function covBase() { syncAna(); // imagem 0..255 em que "coberto" é alto, e o limiar de Otsu dela
     if (S.covBase && S.covBase.mode === S.covMode) return S.covBase;
     const a = ana(), N = S.W * S.H; let img;
     if (S.covMode === 'diff') img = ensureDet().img;

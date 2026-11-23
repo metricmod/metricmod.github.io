@@ -1,4 +1,4 @@
-# MetricMod — versão 0.7.0
+# MetricMod — versão 0.7.1
 
 Abra **MetricMod.html** com dois cliques (Chrome ou Edge). Funciona sem internet e sem instalar nada.
 Versão instalável publicada em **https://metricmod.github.io/** (veja PUBLICAR.md).
@@ -38,7 +38,7 @@ Versão instalável publicada em **https://metricmod.github.io/** (veja PUBLICAR
    - **Perfil de intensidade**: trace uma linha e veja o gráfico do brilho ao longo dela (exporta CSV).
    - **Recortar e girar**: girar 90°, espelhar, nivelar por uma linha (horizonte), recortar.
    - **Ajustar imagem**: brilho, contraste, inverter, canal de cor, ajuste automático e corrigir iluminação irregular.
-     Muda só a visualização; marque "Usar na detecção" para a detecção usar a imagem ajustada. A medição de cor/intensidade
+     A correção de iluminação é o rolling ball do ImageJ e não é usada na contagem de colônias. Os ajustes mudam só a visualização; marque "Usar na detecção" para a detecção usar a imagem ajustada. A medição de cor/intensidade
      usa sempre a foto original.
    - **Medir intensidade** (caixa nos resultados): acrescenta média, desvio, mínimo, máximo, IntDen, RawIntDen e CTCF às áreas
      (como no ImageJ). Para CTCF, marque uma área como "fundo" na coluna Papel.
@@ -92,9 +92,12 @@ Teste de contorno (objeto com metade quase da cor do fundo): método por cor err
 
 Teste de intensidade: média, IntDen e desvio idênticos ao ImageJ. Ângulo, retângulo e elipse conferidos com valores exatos.
 Cicatrização (imagens de teste): fenda detectada com erro de −2,8% e −0,4%. Gel: proporção 1 : 2,006 : 0,501 : 1,505 para 1 : 2 : 0,5 : 1,5.
-Correção de iluminação: variação do fundo caiu de 17,2% para 1,8% (método próprio, parecido mas não idêntico ao rolling ball do ImageJ).
+Corrigir iluminação: mesmo algoritmo do Subtract Background (rolling ball) do ImageJ, com resultado idêntico pixel a pixel.
 
 ## Pastas
 - `site/` — versão instalável (PWA) para publicar; veja PUBLICAR.md.
 - `codigo-fonte/` — código para continuar o desenvolvimento (`build.sh` gera o MetricMod.html e a pasta site).
 - `docs/imagej-comandos.tsv` — as 511 funções do ImageJ, para escolher as próximas.
+
+## Licença
+Código aberto sob a licença MIT (arquivo LICENSE). Os métodos de medição seguem o ImageJ, que é de domínio público.

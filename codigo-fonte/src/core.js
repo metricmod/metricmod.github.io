@@ -856,34 +856,91 @@
   /* ---------- Correção de iluminação desigual (subtrair fundo) ---------- */
   // Estima o fundo numa cópia reduzida: filtro de máximo (fundo claro) ou mínimo (fundo escuro) com raio ~ objeto,
   // suavização e ampliação. Fundo claro: divide (campo plano); fundo escuro: subtrai. Retorna nova imagem RGBA.
-  MM.flatField = (rgba, W, H, radius) => {
-    const f = Math.max(1, Math.round(radius / 6)), w = Math.ceil(W / f), h = Math.ceil(H / f), r = Math.max(2, Math.round(radius / f));
-    const small = [new Float32Array(w * h), new Float32Array(w * h), new Float32Array(w * h)];
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) {
-      let s = 0, n = 0; for (let j = y * f; j < Math.min(H, (y + 1) * f); j++) for (let i = x * f; i < Math.min(W, (x + 1) * f); i++) { s += rgba[(j * W + i) * 4 + c]; n++; }
-      small[c][y * w + x] = s / n;
+  /* ---------- Subtrair fundo: rolling ball do ImageJ ----------
+     Tradução fiel de ij/plugin/filter/BackgroundSubtracter.java (ImageJ 1.54u, domínio público; algoritmo de
+     Sternberg, 1983), com a mesma aritmética em float (Math.fround) para dar os mesmos valores.
+     Opções equivalentes às padrão do comando Process › Subtract Background: rolling ball (não paraboloide),
+     com suavização prévia 3×3. Em RGB, cada canal é tratado separadamente (opção "Separate colors"). */
+  const f32 = Math.fround;
+  const rbBall = (radius) => {
+    let sf, trim;
+    if (radius <= 10) { sf = 1; trim = 24; } else if (radius <= 30) { sf = 2; trim = 24; } else if (radius <= 100) { sf = 4; trim = 32; } else { sf = 8; trim = 40; }
+    let r = radius / sf; if (r < 1) r = 1;
+    const rsq = r * r, xtrim = Math.trunc(Math.trunc(trim * r) / 100), half = Math.round(r - xtrim), width = 2 * half + 1, data = new Float32Array(width * width);
+    for (let y = 0, p = 0; y < width; y++) for (let x = 0; x < width; x++, p++) { const xv = x - half, yv = y - half, t = rsq - xv * xv - yv * yv; data[p] = t > 0 ? Math.sqrt(t) : 0; }
+    return { data, width, sf };
+  };
+  const rbFilter3 = (px, len, p0, inc) => { // média de 3 (filter3, tipo MEAN)
+    const third = f32(0.333333333); let v3 = px[p0], v2 = v3, v1;
+    for (let i = 0, p = p0; i < len; i++, p += inc) { v1 = v2; v2 = v3; if (i < len - 1) v3 = px[p + inc]; const m = f32(f32(f32(v1 + v2) + v3) * third); if (!Number.isNaN(m)) px[p] = m; }
+  };
+  const rbShrink = (px, W, H, sf) => {
+    const sw = Math.trunc((W + sf - 1) / sf), sh = Math.trunc((H + sf - 1) / sf), s = new Float32Array(sw * sh);
+    for (let ys = 0; ys < sh; ys++) for (let xs = 0; xs < sw; xs++) {
+      let mn = 3.4028234663852886e38;
+      for (let j = 0, y = sf * ys; j < sf && y < H; j++, y++) for (let k = 0, x = sf * xs; k < sf && x < W; k++, x++) { const v = px[x + y * W]; if (v < mn) mn = v; }
+      s[xs + ys * sw] = mn;
     }
-    let lum = []; for (let x = 0; x < w; x++) { lum.push(small[0][x] + small[1][x] + small[2][x]); lum.push(small[0][(h - 1) * w + x] + small[1][(h - 1) * w + x] + small[2][(h - 1) * w + x]); }
-    lum.sort((a, b) => a - b); const light = lum[lum.length >> 1] / 3 > 110;
-    const filt = (a, isMax) => { // separável
-      const t = new Float32Array(w * h), o = new Float32Array(w * h);
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = isMax ? -Infinity : Infinity; for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) v = isMax ? Math.max(v, a[y * w + k]) : Math.min(v, a[y * w + k]); t[y * w + x] = v; }
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = isMax ? -Infinity : Infinity; for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) v = isMax ? Math.max(v, t[k * w + x]) : Math.min(v, t[k * w + x]); o[y * w + x] = v; }
-      return o;
-    };
-    const blur = (a) => { let o = a; for (let it = 0; it < 3; it++) { const t = new Float32Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, n = 0; for (let dy = -r; dy <= r; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue; for (let dx = -r; dx <= r; dx += Math.max(1, r >> 1)) { const xx = x + dx; if (xx < 0 || xx >= w) continue; s += o[yy * w + xx]; n++; } } t[y * w + x] = s / n; } o = t; } return o; };
-    // abertura/fechamento: tira os objetos e volta ao nível do fundo
-    const bg = small.map((a) => blur(filt(filt(a, light), !light)));
-    const out = new Uint8ClampedArray(rgba.length), mean = bg.map((b) => b.reduce((s2, v) => s2 + v, 0) / b.length);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const sx = Math.min(w - 1.001, Math.max(0, (x + 0.5) / f - 0.5)), sy = Math.min(h - 1.001, Math.max(0, (y + 0.5) / f - 0.5)), x0 = Math.floor(sx), y0 = Math.floor(sy), fx = sx - x0, fy = sy - y0;
-      const k = (y * W + x) * 4;
-      for (let c = 0; c < 3; c++) {
-        const b = bg[c], v = (b[y0 * w + x0] * (1 - fx) + b[y0 * w + x0 + 1] * fx) * (1 - fy) + (b[(y0 + 1) * w + x0] * (1 - fx) + b[(y0 + 1) * w + x0 + 1] * fx) * fy;
-        out[k + c] = light ? rgba[k + c] * mean[c] / Math.max(1, v) : rgba[k + c] - v + mean[c];
+    return { s, sw, sh };
+  };
+  const rbRoll = (ball, px, W, H) => {
+    const zB = ball.data, bw = ball.width, rad = bw >> 1, cache = new Float32Array(W * bw), NEG = -3.4028234663852886e38;
+    for (let y = -rad; y < H + rad; y++) {
+      const nw = (y + rad) % bw, nr = y + rad;
+      if (nr < H) { cache.set(px.subarray(nr * W, nr * W + W), nw * W); px.fill(NEG, nr * W, nr * W + W); }
+      let y0 = y - rad; if (y0 < 0) y0 = 0; const yB0 = y0 - y + rad; let ye = y + rad; if (ye >= H) ye = H - 1;
+      for (let x = -rad; x < W + rad; x++) {
+        let z = 3.4028234663852886e38, x0 = x - rad; if (x0 < 0) x0 = 0; const xB0 = x0 - x + rad; let xe = x + rad; if (xe >= W) xe = W - 1;
+        for (let yp = y0, yb = yB0; yp <= ye; yp++, yb++) { let cp = (yp % bw) * W + x0; for (let xp = x0, bp = xB0 + yb * bw; xp <= xe; xp++, cp++, bp++) { const zr = f32(cache[cp] - zB[bp]); if (z > zr) z = zr; } }
+        for (let yp = y0, yb = yB0; yp <= ye; yp++, yb++) for (let xp = x0, p = xp + yp * W, bp = xB0 + yb * bw; xp <= xe; xp++, p++, bp++) { const zm = f32(z + zB[bp]); if (px[p] < zm) px[p] = zm; }
       }
-      out[k + 3] = 255;
     }
+  };
+  const rbInterp = (len, slen, sf) => {
+    const idx = new Int32Array(len), w = new Float32Array(len);
+    for (let i = 0; i < len; i++) { let si = Math.trunc((i - Math.trunc(sf / 2)) / sf); if (si >= slen - 1) si = slen - 2; idx[i] = si; const d = f32(f32(f32(i + 0.5) / sf) - f32(si + 0.5)); w[i] = f32(1 - d); }
+    return { idx, w };
+  };
+  const rbEnlarge = (s, sw, sh, px, W, H, sf) => {
+    const X = rbInterp(W, sw, sf), Y = rbInterp(H, sh, sf); let l0 = new Float32Array(W), l1 = new Float32Array(W);
+    const fill = (line, base) => { for (let x = 0; x < W; x++) line[x] = f32(f32(s[base + X.idx[x]] * X.w[x]) + f32(s[base + X.idx[x] + 1] * f32(1 - X.w[x]))); };
+    fill(l1, 0); let ys0 = -1;
+    for (let y = 0; y < H; y++) {
+      if (ys0 < Y.idx[y]) { const t = l0; l0 = l1; l1 = t; ys0++; fill(l1, (Y.idx[y] + 1) * sw); }
+      const wt = Y.w[y]; for (let x = 0, p = y * W; x < W; x++, p++) px[p] = f32(f32(l0[x] * wt) + f32(l1[x] * f32(1 - wt)));
+    }
+  };
+  // Fundo de um canal (Float32Array, alterado no lugar e devolvido): igual a rollingBallFloatBackground do ImageJ.
+  MM.rollingBallBackground = (px, W, H, radius, light, presmooth = true) => {
+    const ball = rbBall(radius);
+    if (light) for (let i = 0; i < px.length; i++) px[i] = -px[i];
+    if (presmooth) { for (let y = 0; y < H; y++) rbFilter3(px, W, y * W, 1); for (let x = 0; x < W; x++) rbFilter3(px, H, x, W); }
+    if (ball.sf > 1) { const { s, sw, sh } = rbShrink(px, W, H, ball.sf); rbRoll(ball, s, sw, sh); rbEnlarge(s, sw, sh, px, W, H, ball.sf); } else rbRoll(ball, px, W, H);
+    if (light) for (let i = 0; i < px.length; i++) px[i] = -px[i];
+    return px;
+  };
+  // Subtrai o fundo de uma imagem de 8 bits por canal; como o ImageJ (ByteProcessor/ColorProcessor).
+  MM.subtractBackground8 = (vals, bg, light) => {
+    const off = light ? 255.5 : 0.5, out = new Uint8ClampedArray(vals.length);
+    for (let p = 0; p < vals.length; p++) { let v = f32(f32(vals[p] - bg[p]) + off); if (v < 0) v = 0; if (v > 255) v = 255; out[p] = Math.trunc(v); }
+    return out;
+  };
+  // RGBA inteira, canal por canal ("Separate colors"). Fundo claro ou escuro decidido pela borda da foto.
+  MM.isLightBackground = (rgba, W, H) => {
+    const lum = []; const step = Math.max(1, Math.floor((W + H) / 2000));
+    for (let x = 0; x < W; x += step) for (const y of [0, H - 1]) { const k = (y * W + x) * 4; lum.push(rgba[k] + rgba[k + 1] + rgba[k + 2]); }
+    for (let y = 0; y < H; y += step) for (const x of [0, W - 1]) { const k = (y * W + x) * 4; lum.push(rgba[k] + rgba[k + 1] + rgba[k + 2]); }
+    lum.sort((a, b) => a - b); return lum[lum.length >> 1] / 3 > 110;
+  };
+  MM.subtractBackgroundRGBA = (rgba, W, H, radius, light) => {
+    if (light === undefined) light = MM.isLightBackground(rgba, W, H);
+    const out = new Uint8ClampedArray(rgba.length), N = W * H, ch = new Float32Array(N), v = new Uint8Array(N);
+    for (let c = 0; c < 3; c++) {
+      for (let i = 0; i < N; i++) { v[i] = rgba[i * 4 + c]; ch[i] = v[i]; }
+      const r = MM.subtractBackground8(v, MM.rollingBallBackground(ch, W, H, radius, light), light);
+      for (let i = 0; i < N; i++) out[i * 4 + c] = r[i];
+    }
+    for (let i = 0; i < N; i++) out[i * 4 + 3] = 255;
     return out;
   };
 

@@ -306,7 +306,7 @@ td .del:hover { color: var(--danger); }
 </head>
 <body>
 <header id="top">
-  <div id="brand" title="MetricMod 0.7.0"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.7.0</button></div>
+  <div id="brand" title="MetricMod 0.7.1"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.7.1</button></div>
   <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
   <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
   <input type="file" id="folder" webkitdirectory multiple hidden>
@@ -1263,34 +1263,91 @@ td .del:hover { color: var(--danger); }
   /* ---------- Correção de iluminação desigual (subtrair fundo) ---------- */
   // Estima o fundo numa cópia reduzida: filtro de máximo (fundo claro) ou mínimo (fundo escuro) com raio ~ objeto,
   // suavização e ampliação. Fundo claro: divide (campo plano); fundo escuro: subtrai. Retorna nova imagem RGBA.
-  MM.flatField = (rgba, W, H, radius) => {
-    const f = Math.max(1, Math.round(radius / 6)), w = Math.ceil(W / f), h = Math.ceil(H / f), r = Math.max(2, Math.round(radius / f));
-    const small = [new Float32Array(w * h), new Float32Array(w * h), new Float32Array(w * h)];
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (let c = 0; c < 3; c++) {
-      let s = 0, n = 0; for (let j = y * f; j < Math.min(H, (y + 1) * f); j++) for (let i = x * f; i < Math.min(W, (x + 1) * f); i++) { s += rgba[(j * W + i) * 4 + c]; n++; }
-      small[c][y * w + x] = s / n;
+  /* ---------- Subtrair fundo: rolling ball do ImageJ ----------
+     Tradução fiel de ij/plugin/filter/BackgroundSubtracter.java (ImageJ 1.54u, domínio público; algoritmo de
+     Sternberg, 1983), com a mesma aritmética em float (Math.fround) para dar os mesmos valores.
+     Opções equivalentes às padrão do comando Process › Subtract Background: rolling ball (não paraboloide),
+     com suavização prévia 3×3. Em RGB, cada canal é tratado separadamente (opção "Separate colors"). */
+  const f32 = Math.fround;
+  const rbBall = (radius) => {
+    let sf, trim;
+    if (radius <= 10) { sf = 1; trim = 24; } else if (radius <= 30) { sf = 2; trim = 24; } else if (radius <= 100) { sf = 4; trim = 32; } else { sf = 8; trim = 40; }
+    let r = radius / sf; if (r < 1) r = 1;
+    const rsq = r * r, xtrim = Math.trunc(Math.trunc(trim * r) / 100), half = Math.round(r - xtrim), width = 2 * half + 1, data = new Float32Array(width * width);
+    for (let y = 0, p = 0; y < width; y++) for (let x = 0; x < width; x++, p++) { const xv = x - half, yv = y - half, t = rsq - xv * xv - yv * yv; data[p] = t > 0 ? Math.sqrt(t) : 0; }
+    return { data, width, sf };
+  };
+  const rbFilter3 = (px, len, p0, inc) => { // média de 3 (filter3, tipo MEAN)
+    const third = f32(0.333333333); let v3 = px[p0], v2 = v3, v1;
+    for (let i = 0, p = p0; i < len; i++, p += inc) { v1 = v2; v2 = v3; if (i < len - 1) v3 = px[p + inc]; const m = f32(f32(f32(v1 + v2) + v3) * third); if (!Number.isNaN(m)) px[p] = m; }
+  };
+  const rbShrink = (px, W, H, sf) => {
+    const sw = Math.trunc((W + sf - 1) / sf), sh = Math.trunc((H + sf - 1) / sf), s = new Float32Array(sw * sh);
+    for (let ys = 0; ys < sh; ys++) for (let xs = 0; xs < sw; xs++) {
+      let mn = 3.4028234663852886e38;
+      for (let j = 0, y = sf * ys; j < sf && y < H; j++, y++) for (let k = 0, x = sf * xs; k < sf && x < W; k++, x++) { const v = px[x + y * W]; if (v < mn) mn = v; }
+      s[xs + ys * sw] = mn;
     }
-    let lum = []; for (let x = 0; x < w; x++) { lum.push(small[0][x] + small[1][x] + small[2][x]); lum.push(small[0][(h - 1) * w + x] + small[1][(h - 1) * w + x] + small[2][(h - 1) * w + x]); }
-    lum.sort((a, b) => a - b); const light = lum[lum.length >> 1] / 3 > 110;
-    const filt = (a, isMax) => { // separável
-      const t = new Float32Array(w * h), o = new Float32Array(w * h);
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = isMax ? -Infinity : Infinity; for (let k = Math.max(0, x - r); k <= Math.min(w - 1, x + r); k++) v = isMax ? Math.max(v, a[y * w + k]) : Math.min(v, a[y * w + k]); t[y * w + x] = v; }
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let v = isMax ? -Infinity : Infinity; for (let k = Math.max(0, y - r); k <= Math.min(h - 1, y + r); k++) v = isMax ? Math.max(v, t[k * w + x]) : Math.min(v, t[k * w + x]); o[y * w + x] = v; }
-      return o;
-    };
-    const blur = (a) => { let o = a; for (let it = 0; it < 3; it++) { const t = new Float32Array(w * h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, n = 0; for (let dy = -r; dy <= r; dy++) { const yy = y + dy; if (yy < 0 || yy >= h) continue; for (let dx = -r; dx <= r; dx += Math.max(1, r >> 1)) { const xx = x + dx; if (xx < 0 || xx >= w) continue; s += o[yy * w + xx]; n++; } } t[y * w + x] = s / n; } o = t; } return o; };
-    // abertura/fechamento: tira os objetos e volta ao nível do fundo
-    const bg = small.map((a) => blur(filt(filt(a, light), !light)));
-    const out = new Uint8ClampedArray(rgba.length), mean = bg.map((b) => b.reduce((s2, v) => s2 + v, 0) / b.length);
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-      const sx = Math.min(w - 1.001, Math.max(0, (x + 0.5) / f - 0.5)), sy = Math.min(h - 1.001, Math.max(0, (y + 0.5) / f - 0.5)), x0 = Math.floor(sx), y0 = Math.floor(sy), fx = sx - x0, fy = sy - y0;
-      const k = (y * W + x) * 4;
-      for (let c = 0; c < 3; c++) {
-        const b = bg[c], v = (b[y0 * w + x0] * (1 - fx) + b[y0 * w + x0 + 1] * fx) * (1 - fy) + (b[(y0 + 1) * w + x0] * (1 - fx) + b[(y0 + 1) * w + x0 + 1] * fx) * fy;
-        out[k + c] = light ? rgba[k + c] * mean[c] / Math.max(1, v) : rgba[k + c] - v + mean[c];
+    return { s, sw, sh };
+  };
+  const rbRoll = (ball, px, W, H) => {
+    const zB = ball.data, bw = ball.width, rad = bw >> 1, cache = new Float32Array(W * bw), NEG = -3.4028234663852886e38;
+    for (let y = -rad; y < H + rad; y++) {
+      const nw = (y + rad) % bw, nr = y + rad;
+      if (nr < H) { cache.set(px.subarray(nr * W, nr * W + W), nw * W); px.fill(NEG, nr * W, nr * W + W); }
+      let y0 = y - rad; if (y0 < 0) y0 = 0; const yB0 = y0 - y + rad; let ye = y + rad; if (ye >= H) ye = H - 1;
+      for (let x = -rad; x < W + rad; x++) {
+        let z = 3.4028234663852886e38, x0 = x - rad; if (x0 < 0) x0 = 0; const xB0 = x0 - x + rad; let xe = x + rad; if (xe >= W) xe = W - 1;
+        for (let yp = y0, yb = yB0; yp <= ye; yp++, yb++) { let cp = (yp % bw) * W + x0; for (let xp = x0, bp = xB0 + yb * bw; xp <= xe; xp++, cp++, bp++) { const zr = f32(cache[cp] - zB[bp]); if (z > zr) z = zr; } }
+        for (let yp = y0, yb = yB0; yp <= ye; yp++, yb++) for (let xp = x0, p = xp + yp * W, bp = xB0 + yb * bw; xp <= xe; xp++, p++, bp++) { const zm = f32(z + zB[bp]); if (px[p] < zm) px[p] = zm; }
       }
-      out[k + 3] = 255;
     }
+  };
+  const rbInterp = (len, slen, sf) => {
+    const idx = new Int32Array(len), w = new Float32Array(len);
+    for (let i = 0; i < len; i++) { let si = Math.trunc((i - Math.trunc(sf / 2)) / sf); if (si >= slen - 1) si = slen - 2; idx[i] = si; const d = f32(f32(f32(i + 0.5) / sf) - f32(si + 0.5)); w[i] = f32(1 - d); }
+    return { idx, w };
+  };
+  const rbEnlarge = (s, sw, sh, px, W, H, sf) => {
+    const X = rbInterp(W, sw, sf), Y = rbInterp(H, sh, sf); let l0 = new Float32Array(W), l1 = new Float32Array(W);
+    const fill = (line, base) => { for (let x = 0; x < W; x++) line[x] = f32(f32(s[base + X.idx[x]] * X.w[x]) + f32(s[base + X.idx[x] + 1] * f32(1 - X.w[x]))); };
+    fill(l1, 0); let ys0 = -1;
+    for (let y = 0; y < H; y++) {
+      if (ys0 < Y.idx[y]) { const t = l0; l0 = l1; l1 = t; ys0++; fill(l1, (Y.idx[y] + 1) * sw); }
+      const wt = Y.w[y]; for (let x = 0, p = y * W; x < W; x++, p++) px[p] = f32(f32(l0[x] * wt) + f32(l1[x] * f32(1 - wt)));
+    }
+  };
+  // Fundo de um canal (Float32Array, alterado no lugar e devolvido): igual a rollingBallFloatBackground do ImageJ.
+  MM.rollingBallBackground = (px, W, H, radius, light, presmooth = true) => {
+    const ball = rbBall(radius);
+    if (light) for (let i = 0; i < px.length; i++) px[i] = -px[i];
+    if (presmooth) { for (let y = 0; y < H; y++) rbFilter3(px, W, y * W, 1); for (let x = 0; x < W; x++) rbFilter3(px, H, x, W); }
+    if (ball.sf > 1) { const { s, sw, sh } = rbShrink(px, W, H, ball.sf); rbRoll(ball, s, sw, sh); rbEnlarge(s, sw, sh, px, W, H, ball.sf); } else rbRoll(ball, px, W, H);
+    if (light) for (let i = 0; i < px.length; i++) px[i] = -px[i];
+    return px;
+  };
+  // Subtrai o fundo de uma imagem de 8 bits por canal; como o ImageJ (ByteProcessor/ColorProcessor).
+  MM.subtractBackground8 = (vals, bg, light) => {
+    const off = light ? 255.5 : 0.5, out = new Uint8ClampedArray(vals.length);
+    for (let p = 0; p < vals.length; p++) { let v = f32(f32(vals[p] - bg[p]) + off); if (v < 0) v = 0; if (v > 255) v = 255; out[p] = Math.trunc(v); }
+    return out;
+  };
+  // RGBA inteira, canal por canal ("Separate colors"). Fundo claro ou escuro decidido pela borda da foto.
+  MM.isLightBackground = (rgba, W, H) => {
+    const lum = []; const step = Math.max(1, Math.floor((W + H) / 2000));
+    for (let x = 0; x < W; x += step) for (const y of [0, H - 1]) { const k = (y * W + x) * 4; lum.push(rgba[k] + rgba[k + 1] + rgba[k + 2]); }
+    for (let y = 0; y < H; y += step) for (const x of [0, W - 1]) { const k = (y * W + x) * 4; lum.push(rgba[k] + rgba[k + 1] + rgba[k + 2]); }
+    lum.sort((a, b) => a - b); return lum[lum.length >> 1] / 3 > 110;
+  };
+  MM.subtractBackgroundRGBA = (rgba, W, H, radius, light) => {
+    if (light === undefined) light = MM.isLightBackground(rgba, W, H);
+    const out = new Uint8ClampedArray(rgba.length), N = W * H, ch = new Float32Array(N), v = new Uint8Array(N);
+    for (let c = 0; c < 3; c++) {
+      for (let i = 0; i < N; i++) { v[i] = rgba[i * 4 + c]; ch[i] = v[i]; }
+      const r = MM.subtractBackground8(v, MM.rollingBallBackground(ch, W, H, radius, light), light);
+      for (let i = 0; i < N; i++) out[i * 4 + c] = r[i];
+    }
+    for (let i = 0; i < N; i++) out[i * 4 + 3] = 255;
     return out;
   };
 
@@ -1501,9 +1558,10 @@ td .del:hover { color: var(--danger); }
         d: 'Para cada banda, o fundo é a média aparada (sem os 25% mais baixos e mais altos) de uma moldura de 2 pixels em volta do retângulo. Densidade = soma de (intensidade − fundo) dentro do retângulo. Em bandas escuras sobre fundo claro, a intensidade é invertida (255 − valor). O resultado relativo é a densidade ÷ densidade da banda 1 × 100. Use a imagem original do gel, sem ajuste de contraste nem compressão JPG.' },
       { t: 'Perfil de linha',
         d: 'Intensidade amostrada a cada pixel ao longo da linha, com interpolação bilinear (como o Plot Profile do ImageJ, com linha de 1 pixel).' },
-      { t: 'Corrigir iluminação desigual',
-        d: 'O fundo é estimado numa cópia reduzida da foto por abertura e fechamento morfológicos (removem os objetos) seguidos de suavização. Com fundo claro, a foto é dividida pelo fundo (correção de campo plano); com fundo escuro, o fundo é subtraído. É usado só nas detecções; as medidas de intensidade continuam com a foto original. O objetivo é o mesmo do Subtract Background do ImageJ, mas o método não é o mesmo (lá é o "rolling ball").',
-        r: 'Sternberg, S. R. Biomedical image processing. <i>Computer</i>, v. 16, n. 1, p. 22–34, 1983 (método do rolling ball, para comparação).' },
+      { t: 'Corrigir iluminação desigual (subtrair fundo)',
+        d: 'Algoritmo <i>rolling ball</i>, traduzido do comando Process › Subtract Background do ImageJ 1.54u com a mesma aritmética: suavização 3×3, redução da imagem, rolagem da bola, ampliação por interpolação bilinear e subtração com o mesmo arredondamento. Cada canal de cor é tratado separadamente (opção <i>Separate colors</i>). O raio é 1/20 do maior lado da foto (mínimo 20 pixels); fundo claro ou escuro é decidido pela borda da foto. É usado só nas detecções e na cobertura; as medidas de intensidade continuam com a foto original. Não é usado na contagem de colônias, cujo modelo de cor já compara cada colônia com o anel de fundo em volta.',
+        r: 'Sternberg, S. R. Biomedical image processing. <i>Computer</i>, v. 16, n. 1, p. 22–34, 1983.',
+        ij: 'Resultado idêntico ao Subtract Background do ImageJ 1.54u, pixel a pixel (raios 5, 20, 60 e 150; fundo claro e escuro; cinza e cor).' },
       { t: 'Girar, espelhar e recortar',
         d: 'Giros de 90° e espelhamentos reposicionam os pixels sem alterar valores. Giros livres e "endireitar por uma linha" usam interpolação bilinear e aumentam a área para não cortar a foto. A escala é mantida.' },
       { t: 'Barra de escala',
@@ -1538,7 +1596,8 @@ td .del:hover { color: var(--danger); }
       ['Bandas de gel (proporção real 1 : 2 : 0,5 : 1,5)', '1 : 2 : 0,5 : 1,5', '1 : 2,006 : 0,501 : 1,505', 'até 0,6%'],
       ['Fenda de cicatrização (2 imagens)', '72.167 e 54.000 px', '70.177 e 53.772 px', '−2,8% e −0,4%'],
       ['Fechamento da fenda (largura 220 → 110 px)', '≈ 50%', '50,2%', ''],
-      ['Corrigir iluminação (placa com luz irregular)', 'variação do ágar 17,2', '1,8', 'colônias: 60 de 60'],
+      ['Subtrair fundo (rolling ball): 10 comparações, raios 5 a 150, fundo claro e escuro, cinza e cor', 'ImageJ 1.54u', '26,4 milhões de valores idênticos', '0'],
+      ['Desvio do ágar numa placa com luz irregular (10.607 pontos)', '8,06 sem correção', '2,42 com correção', '−70%'],
       ['Girar 90° quatro vezes; espelhar duas vezes', 'foto original', 'pixels idênticos', '0'],
     ],
     validationNote: 'Testes feitos com imagens geradas por computador, em que o valor real é conhecido, e com o ImageJ 1.54u compilado do código-fonte oficial. A validação com amostras reais de laboratório está em andamento e será publicada aqui.',
@@ -1547,9 +1606,11 @@ td .del:hover { color: var(--danger); }
       'Os algoritmos de medição seguem as convenções do <b>ImageJ 1.54</b> (Wayne Rasband, National Institutes of Health, EUA), que é de domínio público, e foram conferidos contra ele. O MetricMod não contém código do ImageJ e não é afiliado ao NIH nem ao projeto ImageJ.',
       'Referência do ImageJ: Schneider, C. A.; Rasband, W. S.; Eliceiri, K. W. NIH Image to ImageJ: 25 years of image analysis. <i>Nature Methods</i>, v. 9, p. 671–675, 2012.',
       'Os demais métodos estão citados junto de cada ferramenta.',
+      'Código-fonte aberto sob a licença MIT: https://github.com/metricmod/metricmod.github.io',
     ],
 
     changelog: [
+      ['0.7.1', 'Corrigir iluminação agora usa o rolling ball do ImageJ, com resultado idêntico pixel a pixel; o número de validação anterior (17,2 → 1,8) foi medido de forma que favorecia o resultado e foi substituído. Licença MIT.'],
       ['0.7', 'Protocolos prontos (sementes, colônias, área foliar, cobertura, fluorescência CTCF, cicatrização, bandas de gel) e protocolos próprios, salvos no aparelho, com exportação e importação; ângulo; retângulo e elipse; medidas de intensidade; barra de escala; recortar, girar e endireitar; ajustes de imagem; corrigir iluminação desigual; porcentagem de cobertura; bandas de gel; perfil de linha e histograma; comparar fotos lado a lado; fotos de exemplo e tutorial de primeiro uso.'],
       ['0.6', 'Painel "Métodos e citação" (métodos, validação, créditos, como citar); versão visível no app, na planilha, no projeto e na imagem salva.'],
       ['0.5', 'App instalável (funciona sem internet e se atualiza sozinho); salvar e abrir projeto; salvamento automático; ações em lote; separar objetos encostados; TIFF e HEIC.'],
@@ -1605,7 +1666,7 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const APP_VERSION = '0.7.0', AB = window.MM_ABOUT;
+  const APP_VERSION = '0.7.1', AB = window.MM_ABOUT;
   const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('canvasWrap'), guide = $('guide');
   const COLORS = ['#ff3d7f', '#00b3e6', '#ffb000', '#8f6bff', '#00c48c', '#ff6b2c', '#e040fb', '#4fc3f7'];
   const PREFIX = { area: 'A', length: 'C', lw: 'CL', count: 'N', colony: 'P', angle: 'AN', coverage: 'CB', bands: 'G', profile: 'PL' };
@@ -1686,15 +1747,21 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
   const thresholdFromSens = () => { const o = S.det ? S.det.threshold : 128; return Math.max(1, Math.min(254, Math.round(o * (2 - S.sens / 50)))); };
   // Imagem usada nas detecções: a original, opcionalmente com iluminação corrigida e/ou com os ajustes de imagem.
   // As medidas de intensidade usam sempre a original (S.rgba ou os valores brutos do TIFF em S.raw).
+  // Na contagem de colônias a correção não é usada: o modelo de cor já compara cada colônia com o anel de fundo em volta,
+  // e a subtração de fundo muda as cores que o modelo aprende.
+  const flatOn = () => !!S.flat && S.tool !== 'colony';
+  const anaKey = () => `${flatOn()}|${!!(S.adj && S.adj.use && adjActive())}`;
+  const syncAna = () => { if (S.anaFor !== anaKey()) { S.ana = null; S.det = null; S.grad = null; S.blur = null; S.covBase = null; S.anaFor = anaKey(); } };
   const ana = () => {
-    if (!S.flat && !(S.adj && S.adj.use && adjActive())) return S.rgba;
-    if (!S.ana) { let a = S.rgba; if (S.flat) a = MM.flatField(a, S.W, S.H, Math.max(20, Math.round(Math.max(S.W, S.H) / 20))); if (S.adj && S.adj.use && adjActive()) a = adjustRGBA(a); S.ana = a; }
+    syncAna();
+    if (!flatOn() && !(S.adj && S.adj.use && adjActive())) return S.rgba;
+    if (!S.ana) { let a = S.rgba; if (flatOn()) a = MM.subtractBackgroundRGBA(a, S.W, S.H, Math.max(20, Math.round(Math.max(S.W, S.H) / 20))); if (S.adj && S.adj.use && adjActive()) a = adjustRGBA(a); S.ana = a; }
     return S.ana;
   };
   const resetAna = () => { S.ana = null; S.det = null; S.grad = null; S.blur = null; S.covBase = null; };
-  const ensureDet = () => { if (!S.det) S.det = MM.backgroundDistance(ana(), S.W, S.H); return S.det; };
-  const ensureGrad = () => { if (!S.grad) S.grad = MM.gradient(ana(), S.W, S.H); return S.grad; };
-  const ensureBlur = () => { if (!S.blur) S.blur = MM.blurRGBA(ana(), S.W, S.H); return S.blur; };
+  const ensureDet = () => { syncAna(); if (!S.det) S.det = MM.backgroundDistance(ana(), S.W, S.H); return S.det; };
+  const ensureGrad = () => { syncAna(); if (!S.grad) S.grad = MM.gradient(ana(), S.W, S.H); return S.grad; };
+  const ensureBlur = () => { syncAna(); if (!S.blur) S.blur = MM.blurRGBA(ana(), S.W, S.H); return S.blur; };
   const objName = (o) => `${PREFIX[o.kind]}${o.n}`;
 
   /* ---------- desfazer ---------- */
@@ -2195,8 +2262,7 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
           `<div class="ctl"><label title="Quanto a cor pode variar">Cor <input type="range" id="gCTol" min="1" max="6" step="0.25" value="${P.tol}"></label>
            <label title="Quanto o tamanho pode variar em relação ao exemplo">Tamanho <input type="range" id="gCSize" min="1.5" max="8" step="0.5" value="${P.size}"></label>
            <label title="Mais à direita aceita formatos menos redondos">Formato <input type="range" id="gCShape" min="0.05" max="0.6" step="0.05" value="${P.shape}"></label>
-           <label><input type="checkbox" id="gCClu" ${P.clusters ? 'checked' : ''}> Dividir colônias encostadas</label>
-           <label><input type="checkbox" id="gFlat" ${S.flat ? 'checked' : ''}> Corrigir iluminação desigual</label></div>
+           <label><input type="checkbox" id="gCClu" ${P.clusters ? 'checked' : ''}> Dividir colônias encostadas</label></div>
            <div class="ctl"><button class="gbtn" data-a="colExample">Adicionar outro exemplo</button><button class="gbtn" data-a="colPlate">Detectar placa de novo</button><button class="gbtn" data-a="colRoi">Desenhar a placa</button>
            <button class="gbtn" data-a="colNew">Nova placa</button>${S.photos.length > 1 ? `<button class="gbtn" data-a="colAllPhotos" title="Usa os mesmos exemplos e ajustes; a placa é detectada em cada foto">Contar em todas as ${S.photos.length} fotos</button>` : ''}<button class="pbtn" data-a="close">Concluir</button></div>`;
       }
@@ -2428,7 +2494,7 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
 
   /* ---------- cobertura (%) ---------- */
   S.covMode = 'diff'; S.covSens = 50; S.covRoi = 'whole';
-  function covBase() { // imagem 0..255 em que "coberto" é alto, e o limiar de Otsu dela
+  function covBase() { syncAna(); // imagem 0..255 em que "coberto" é alto, e o limiar de Otsu dela
     if (S.covBase && S.covBase.mode === S.covMode) return S.covBase;
     const a = ana(), N = S.W * S.H; let img;
     if (S.covMode === 'diff') img = ensureDet().img;
