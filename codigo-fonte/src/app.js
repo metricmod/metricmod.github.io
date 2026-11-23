@@ -833,20 +833,15 @@
   function covBase() { syncAna(); // imagem 0..255 em que "coberto" é alto, e o limiar de Otsu dela
     if (S.covBase && S.covBase.mode === S.covMode) return S.covBase;
     const a = ana(), N = S.W * S.H; let img;
-    if (S.covMode === 'diff') img = ensureDet().img;
-    else {
-      img = new Uint8Array(N); let lo = Infinity, hi = -Infinity; const v = new Float32Array(N);
-      for (let i = 0, q = 0; i < N; i++, q += 4) { const r = a[q], g = a[q + 1], b = a[q + 2]; v[i] = S.covMode === 'dark' ? 255 - (r + g + b) / 3 : S.covMode === 'light' ? (r + g + b) / 3 : 2 * g - r - b; if (v[i] < lo) lo = v[i]; if (v[i] > hi) hi = v[i]; }
-      for (let i = 0; i < N; i++) img[i] = Math.round((v[i] - lo) / Math.max(1e-9, hi - lo) * 255);
-    }
-    const hist = new Array(256).fill(0); for (let i = 0; i < N; i++) hist[img[i]]++;
-    S.covBase = { mode: S.covMode, img, otsu: MM.otsu(hist) }; return S.covBase;
+    if (S.covMode === 'diff') { const d = ensureDet(); S.covBase = { mode: S.covMode, img: d.img, otsu: d.threshold }; return S.covBase; }
+    const c = MM.coverageBase(a, S.W, S.H, S.covMode); S.covBase = { mode: S.covMode, img: c.img, otsu: c.threshold }; return S.covBase;
   }
   function updateCoverage(final) {
     if (!S.img) return;
     if (S.covRoi !== 'whole' && !S.covPoly) { S.preview = null; S.covResult = null; renderGuide(); render(); return; }
-    const B = covBase(), t = Math.max(1, Math.min(254, Math.round(B.otsu * (2 - S.covSens / 50)))), W = S.W, H = S.H;
-    const roi = S.covRoi === 'whole' ? null : MM.rasterPolygon(S.covPoly, W, H);
+    const B = covBase(), W = S.W, H = S.H, roi = S.covRoi === 'whole' ? null : MM.rasterPolygon(S.covPoly, W, H);
+    // limiar de Otsu calculado só dentro da área analisada (como o ImageJ com uma seleção); a sensibilidade o desloca
+    const otsu = roi ? MM.coverageThreshold(B.img, B.mode, roi, W) : B.otsu, t = Math.max(1, Math.min(254, Math.round(otsu * (2 - S.covSens / 50))));
     if (!S.preview || S.preview.width !== W) { S.preview = document.createElement('canvas'); S.preview.width = W; S.preview.height = H; S.previewData = S.preview.getContext('2d').createImageData(W, H); }
     const d = S.previewData.data; let covered = 0, total = 0;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {

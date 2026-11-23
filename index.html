@@ -306,7 +306,7 @@ td .del:hover { color: var(--danger); }
 </head>
 <body>
 <header id="top">
-  <div id="brand" title="MetricMod 0.7.4"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.7.4</button></div>
+  <div id="brand" title="MetricMod 0.7.5"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.7.5</button></div>
   <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
   <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
   <input type="file" id="folder" webkitdirectory multiple hidden>
@@ -1270,6 +1270,30 @@ td .del:hover { color: var(--danger); }
   /* ---------- Correção de iluminação desigual (subtrair fundo) ---------- */
   // Estima o fundo numa cópia reduzida: filtro de máximo (fundo claro) ou mínimo (fundo escuro) com raio ~ objeto,
   // suavização e ampliação. Fundo claro: divide (campo plano); fundo escuro: subtrai. Retorna nova imagem RGBA.
+  // Imagem 0..255 em que "coberto" é alto, e o limiar de Otsu dela, para a porcentagem de cobertura.
+  // Escuro/claro: o cinza arredondado do ImageJ e o Otsu do histograma dele, de modo que "coberto" seja exatamente o que o
+  // ImageJ seleciona com setAutoThreshold("Otsu") (escuro, cinza ≤ limiar) ou ("Otsu dark") (claro, cinza > limiar).
+  // Verde: índice 2G − R − B (Woebbecke et al., 1995) esticado de 0 a 255, e Otsu.
+  MM.coverageBase = (rgba, W, H, mode) => {
+    const N = W * H, img = new Uint8Array(N), hist = new Array(256).fill(0);
+    if (mode === 'dark' || mode === 'light') {
+      for (let i = 0; i < N; i++) { const g = MM.grayAt(rgba, null, i); hist[g]++; img[i] = mode === 'dark' ? 255 - g : g; }
+      return { img, threshold: MM.coverageThreshold(img, mode, null, W) };
+    }
+    const v = new Float32Array(N); let lo = Infinity, hi = -Infinity;
+    for (let i = 0, q = 0; i < N; i++, q += 4) { v[i] = 2 * rgba[q + 1] - rgba[q] - rgba[q + 2]; if (v[i] < lo) lo = v[i]; if (v[i] > hi) hi = v[i]; }
+    for (let i = 0; i < N; i++) img[i] = Math.round((v[i] - lo) / Math.max(1e-9, hi - lo) * 255);
+    return { img, threshold: MM.coverageThreshold(img, mode, null, W) };
+  };
+  // Limiar de Otsu dentro da área analisada (máscara opcional), como o setAutoThreshold do ImageJ com uma seleção.
+  MM.coverageThreshold = (img, mode, m, W) => {
+    const hist = new Array(256).fill(0), dark = mode === 'dark';
+    const add = (i) => { hist[dark ? 255 - img[i] : img[i]]++; };
+    if (m) { for (let j = 0; j < m.h; j++) for (let i = 0; i < m.w; i++) if (m.data[j * m.w + i]) add((j + m.y) * W + i + m.x); }
+    else for (let i = 0; i < img.length; i++) add(i);
+    const t = MM.otsu(hist); return dark ? 254 - t : t;
+  };
+
   /* ---------- Subtrair fundo: rolling ball do ImageJ ----------
      Tradução fiel de ij/plugin/filter/BackgroundSubtracter.java (ImageJ 1.54u, domínio público; algoritmo de
      Sternberg, 1983), com a mesma aritmética em float (Math.fround) para dar os mesmos valores.
@@ -1556,8 +1580,9 @@ td .del:hover { color: var(--danger); }
       { t: 'Ângulo',
         d: 'Ângulo entre os dois segmentos que saem do vértice, de 0° a 180°.', ij: 'Idêntico ao do ImageJ 1.54.' },
       { t: 'Porcentagem de cobertura',
-        d: 'Cada pixel recebe um valor conforme o critério escolhido: diferença de cor em relação ao fundo, escuridão, claridade ou índice de verde (2G − R − B). O limiar é o de Otsu, ajustável pela sensibilidade. Cobertura = pixels acima do limiar ÷ pixels da área analisada × 100.',
-        r: 'Woebbecke, D. M. et al. Color indices for weed identification under various soil, residue, and lighting conditions. <i>Transactions of the ASAE</i>, v. 38, n. 1, p. 259–269, 1995 (índice de verde).' },
+        d: 'Cobertura = pixels cobertos ÷ pixels da área analisada × 100. Critério "mais escuro" ou "mais claro": o cinza do ImageJ e o limiar de Otsu do seu histograma, calculado só dentro da área analisada, como o setAutoThreshold("Otsu") e ("Otsu dark") do ImageJ com uma seleção. Critério "verde": índice de verde em excesso 2G − R − B, esticado de 0 a 255, e limiar de Otsu. Critério "diferente do fundo": distância de cor até a cor da borda da foto, e limiar de Otsu. A sensibilidade desloca o limiar (no meio, é o de Otsu).',
+        r: 'Woebbecke, D. M. et al. Color indices for weed identification under various soil, residue, and lighting conditions. <i>Transactions of the ASAE</i>, v. 38, n. 1, p. 259–269, 1995 (índice de verde).',
+        ij: 'Critérios escuro e claro idênticos ao limiar de Otsu do ImageJ 1.54u, na foto inteira e dentro de uma seleção.' },
       { t: 'Cicatrização (fenda)',
         d: 'A fenda é a região lisa entre as camadas de células: calcula-se o desvio padrão local do cinza, separa-se liso de texturizado pelo limiar de Otsu e refina-se a borda com uma janela menor. Só é aceita uma região que atravesse a foto e ocupe de 3% a 60% dela. Fechamento (%) = (área no tempo 0 − área no tempo t) ÷ área no tempo 0 × 100; o tempo 0 é a primeira foto do mesmo grupo.',
         r: 'Suarez-Arnedo, A. et al. An image J plugin for the high throughput image analysis of in vitro scratch wound healing assays. <i>PLOS ONE</i>, v. 15, n. 7, e0232565, 2020.' },
@@ -1602,6 +1627,7 @@ td .del:hover { color: var(--danger); }
       ['Área e perímetro de elipses', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Seleção e linha à mão livre (área, perímetro, Feret, comprimento)', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Perfil de linha (3 linhas) e histograma (foto e elipse)', 'ImageJ 1.54u', 'idênticos', '0'],
+      ['Cobertura, critérios escuro e claro (4 fotos e uma elipse)', 'Otsu do ImageJ 1.54u', 'idênticos', '0'],
       ['Ângulo', '72,35° (ImageJ)', '72,35°', '0'],
       ['Bandas de gel (proporção real 1 : 2 : 0,5 : 1,5)', '1 : 2 : 0,5 : 1,5', '1 : 2,006 : 0,501 : 1,505', 'até 0,6%'],
       ['Fenda de cicatrização (2 imagens)', '72.167 e 54.000 px', '70.177 e 53.772 px', '−2,8% e −0,4%'],
@@ -1621,6 +1647,7 @@ td .del:hover { color: var(--danger); }
     ],
 
     changelog: [
+      ['0.7.5', 'Cobertura: critérios escuro e claro iguais ao limiar de Otsu do ImageJ; com uma área desenhada, o limiar é calculado só dentro dela, como no ImageJ.'],
       ['0.7.4', 'Perímetro dos objetos detectados, perímetro de seleções à mão livre e perfil de linha calculados exatamente como no ImageJ (antes: até 0,15% no perímetro de formas com cantos agudos e 0,33 nível de cinza no perfil).'],
       ['0.7.3', 'Fotos lidas sem conversão de perfil de cor, com os mesmos valores que o ImageJ lê (conferido em JPG e PNG, 6,16 milhões de pixels).'],
       ['0.7.2', 'TIFF de 1 bit: valores de intensidade 0 e 255, como no ImageJ (antes eram 0 e 1). Testes de validação publicados junto do código-fonte (pasta testes).'],
@@ -1680,7 +1707,7 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const APP_VERSION = '0.7.4', AB = window.MM_ABOUT;
+  const APP_VERSION = '0.7.5', AB = window.MM_ABOUT;
   const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('canvasWrap'), guide = $('guide');
   const COLORS = ['#ff3d7f', '#00b3e6', '#ffb000', '#8f6bff', '#00c48c', '#ff6b2c', '#e040fb', '#4fc3f7'];
   const PREFIX = { area: 'A', length: 'C', lw: 'CL', count: 'N', colony: 'P', angle: 'AN', coverage: 'CB', bands: 'G', profile: 'PL' };
@@ -2511,20 +2538,15 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
   function covBase() { syncAna(); // imagem 0..255 em que "coberto" é alto, e o limiar de Otsu dela
     if (S.covBase && S.covBase.mode === S.covMode) return S.covBase;
     const a = ana(), N = S.W * S.H; let img;
-    if (S.covMode === 'diff') img = ensureDet().img;
-    else {
-      img = new Uint8Array(N); let lo = Infinity, hi = -Infinity; const v = new Float32Array(N);
-      for (let i = 0, q = 0; i < N; i++, q += 4) { const r = a[q], g = a[q + 1], b = a[q + 2]; v[i] = S.covMode === 'dark' ? 255 - (r + g + b) / 3 : S.covMode === 'light' ? (r + g + b) / 3 : 2 * g - r - b; if (v[i] < lo) lo = v[i]; if (v[i] > hi) hi = v[i]; }
-      for (let i = 0; i < N; i++) img[i] = Math.round((v[i] - lo) / Math.max(1e-9, hi - lo) * 255);
-    }
-    const hist = new Array(256).fill(0); for (let i = 0; i < N; i++) hist[img[i]]++;
-    S.covBase = { mode: S.covMode, img, otsu: MM.otsu(hist) }; return S.covBase;
+    if (S.covMode === 'diff') { const d = ensureDet(); S.covBase = { mode: S.covMode, img: d.img, otsu: d.threshold }; return S.covBase; }
+    const c = MM.coverageBase(a, S.W, S.H, S.covMode); S.covBase = { mode: S.covMode, img: c.img, otsu: c.threshold }; return S.covBase;
   }
   function updateCoverage(final) {
     if (!S.img) return;
     if (S.covRoi !== 'whole' && !S.covPoly) { S.preview = null; S.covResult = null; renderGuide(); render(); return; }
-    const B = covBase(), t = Math.max(1, Math.min(254, Math.round(B.otsu * (2 - S.covSens / 50)))), W = S.W, H = S.H;
-    const roi = S.covRoi === 'whole' ? null : MM.rasterPolygon(S.covPoly, W, H);
+    const B = covBase(), W = S.W, H = S.H, roi = S.covRoi === 'whole' ? null : MM.rasterPolygon(S.covPoly, W, H);
+    // limiar de Otsu calculado só dentro da área analisada (como o ImageJ com uma seleção); a sensibilidade o desloca
+    const otsu = roi ? MM.coverageThreshold(B.img, B.mode, roi, W) : B.otsu, t = Math.max(1, Math.min(254, Math.round(otsu * (2 - S.covSens / 50))));
     if (!S.preview || S.preview.width !== W) { S.preview = document.createElement('canvas'); S.preview.width = W; S.preview.height = H; S.previewData = S.preview.getContext('2d').createImageData(W, H); }
     const d = S.previewData.data; let covered = 0, total = 0;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {

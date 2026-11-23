@@ -43,8 +43,9 @@
       { t: 'Ângulo',
         d: 'Ângulo entre os dois segmentos que saem do vértice, de 0° a 180°.', ij: 'Idêntico ao do ImageJ 1.54.' },
       { t: 'Porcentagem de cobertura',
-        d: 'Cada pixel recebe um valor conforme o critério escolhido: diferença de cor em relação ao fundo, escuridão, claridade ou índice de verde (2G − R − B). O limiar é o de Otsu, ajustável pela sensibilidade. Cobertura = pixels acima do limiar ÷ pixels da área analisada × 100.',
-        r: 'Woebbecke, D. M. et al. Color indices for weed identification under various soil, residue, and lighting conditions. <i>Transactions of the ASAE</i>, v. 38, n. 1, p. 259–269, 1995 (índice de verde).' },
+        d: 'Cobertura = pixels cobertos ÷ pixels da área analisada × 100. Critério "mais escuro" ou "mais claro": o cinza do ImageJ e o limiar de Otsu do seu histograma, calculado só dentro da área analisada, como o setAutoThreshold("Otsu") e ("Otsu dark") do ImageJ com uma seleção. Critério "verde": índice de verde em excesso 2G − R − B, esticado de 0 a 255, e limiar de Otsu. Critério "diferente do fundo": distância de cor até a cor da borda da foto, e limiar de Otsu. A sensibilidade desloca o limiar (no meio, é o de Otsu).',
+        r: 'Woebbecke, D. M. et al. Color indices for weed identification under various soil, residue, and lighting conditions. <i>Transactions of the ASAE</i>, v. 38, n. 1, p. 259–269, 1995 (índice de verde).',
+        ij: 'Critérios escuro e claro idênticos ao limiar de Otsu do ImageJ 1.54u, na foto inteira e dentro de uma seleção.' },
       { t: 'Cicatrização (fenda)',
         d: 'A fenda é a região lisa entre as camadas de células: calcula-se o desvio padrão local do cinza, separa-se liso de texturizado pelo limiar de Otsu e refina-se a borda com uma janela menor. Só é aceita uma região que atravesse a foto e ocupe de 3% a 60% dela. Fechamento (%) = (área no tempo 0 − área no tempo t) ÷ área no tempo 0 × 100; o tempo 0 é a primeira foto do mesmo grupo.',
         r: 'Suarez-Arnedo, A. et al. An image J plugin for the high throughput image analysis of in vitro scratch wound healing assays. <i>PLOS ONE</i>, v. 15, n. 7, e0232565, 2020.' },
@@ -89,6 +90,7 @@
       ['Área e perímetro de elipses', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Seleção e linha à mão livre (área, perímetro, Feret, comprimento)', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Perfil de linha (3 linhas) e histograma (foto e elipse)', 'ImageJ 1.54u', 'idênticos', '0'],
+      ['Cobertura, critérios escuro e claro (4 fotos e uma elipse)', 'Otsu do ImageJ 1.54u', 'idênticos', '0'],
       ['Ângulo', '72,35° (ImageJ)', '72,35°', '0'],
       ['Bandas de gel (proporção real 1 : 2 : 0,5 : 1,5)', '1 : 2 : 0,5 : 1,5', '1 : 2,006 : 0,501 : 1,505', 'até 0,6%'],
       ['Fenda de cicatrização (2 imagens)', '72.167 e 54.000 px', '70.177 e 53.772 px', '−2,8% e −0,4%'],
@@ -108,6 +110,7 @@
     ],
 
     changelog: [
+      ['0.7.5', 'Cobertura: critérios escuro e claro iguais ao limiar de Otsu do ImageJ; com uma área desenhada, o limiar é calculado só dentro dela, como no ImageJ.'],
       ['0.7.4', 'Perímetro dos objetos detectados, perímetro de seleções à mão livre e perfil de linha calculados exatamente como no ImageJ (antes: até 0,15% no perímetro de formas com cantos agudos e 0,33 nível de cinza no perfil).'],
       ['0.7.3', 'Fotos lidas sem conversão de perfil de cor, com os mesmos valores que o ImageJ lê (conferido em JPG e PNG, 6,16 milhões de pixels).'],
       ['0.7.2', 'TIFF de 1 bit: valores de intensidade 0 e 255, como no ImageJ (antes eram 0 e 1). Testes de validação publicados junto do código-fonte (pasta testes).'],

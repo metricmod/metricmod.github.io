@@ -863,6 +863,30 @@
   /* ---------- Correção de iluminação desigual (subtrair fundo) ---------- */
   // Estima o fundo numa cópia reduzida: filtro de máximo (fundo claro) ou mínimo (fundo escuro) com raio ~ objeto,
   // suavização e ampliação. Fundo claro: divide (campo plano); fundo escuro: subtrai. Retorna nova imagem RGBA.
+  // Imagem 0..255 em que "coberto" é alto, e o limiar de Otsu dela, para a porcentagem de cobertura.
+  // Escuro/claro: o cinza arredondado do ImageJ e o Otsu do histograma dele, de modo que "coberto" seja exatamente o que o
+  // ImageJ seleciona com setAutoThreshold("Otsu") (escuro, cinza ≤ limiar) ou ("Otsu dark") (claro, cinza > limiar).
+  // Verde: índice 2G − R − B (Woebbecke et al., 1995) esticado de 0 a 255, e Otsu.
+  MM.coverageBase = (rgba, W, H, mode) => {
+    const N = W * H, img = new Uint8Array(N), hist = new Array(256).fill(0);
+    if (mode === 'dark' || mode === 'light') {
+      for (let i = 0; i < N; i++) { const g = MM.grayAt(rgba, null, i); hist[g]++; img[i] = mode === 'dark' ? 255 - g : g; }
+      return { img, threshold: MM.coverageThreshold(img, mode, null, W) };
+    }
+    const v = new Float32Array(N); let lo = Infinity, hi = -Infinity;
+    for (let i = 0, q = 0; i < N; i++, q += 4) { v[i] = 2 * rgba[q + 1] - rgba[q] - rgba[q + 2]; if (v[i] < lo) lo = v[i]; if (v[i] > hi) hi = v[i]; }
+    for (let i = 0; i < N; i++) img[i] = Math.round((v[i] - lo) / Math.max(1e-9, hi - lo) * 255);
+    return { img, threshold: MM.coverageThreshold(img, mode, null, W) };
+  };
+  // Limiar de Otsu dentro da área analisada (máscara opcional), como o setAutoThreshold do ImageJ com uma seleção.
+  MM.coverageThreshold = (img, mode, m, W) => {
+    const hist = new Array(256).fill(0), dark = mode === 'dark';
+    const add = (i) => { hist[dark ? 255 - img[i] : img[i]]++; };
+    if (m) { for (let j = 0; j < m.h; j++) for (let i = 0; i < m.w; i++) if (m.data[j * m.w + i]) add((j + m.y) * W + i + m.x); }
+    else for (let i = 0; i < img.length; i++) add(i);
+    const t = MM.otsu(hist); return dark ? 254 - t : t;
+  };
+
   /* ---------- Subtrair fundo: rolling ball do ImageJ ----------
      Tradução fiel de ij/plugin/filter/BackgroundSubtracter.java (ImageJ 1.54u, domínio público; algoritmo de
      Sternberg, 1983), com a mesma aritmética em float (Math.fround) para dar os mesmos valores.

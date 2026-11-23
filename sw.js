@@ -1,5 +1,5 @@
 // MetricMod — guarda o app para funcionar sem internet. Ao publicar uma versão nova, o número abaixo muda.
-const VERSAO = '0.7.4';
+const VERSAO = '0.7.5';
 const CACHE = 'metricmod-' + VERSAO;
 const ARQUIVOS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon-32.png'];
 // cache: 'reload' busca direto da rede, sem passar pelo cache comum do navegador (senão a versão antiga pode ser guardada)
