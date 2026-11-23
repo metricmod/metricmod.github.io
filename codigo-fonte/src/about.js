@@ -82,8 +82,8 @@
       ['Foto inclinada com correção de perspectiva', '2,565 cm²', '2,598 cm²', '+1,3% (sem correção: +4,5%)'],
       ['Placa com 60 colônias, 3 pares encostados e 15 de outro tipo', '60', '60', 'também com luz irregular'],
       ['Objetos encostados (pares, trios, tamanhos diferentes)', '18 (Watershed do ImageJ)', '18', 'igual'],
-      ['Detecção da placa', 'centro (700, 550), raio 494 px', 'centro (700,5, 550,5), raio 501 px', 'raio +1,4%'],
-      ['Leitura de TIFF (17 variações)', 'arquivo original', 'pixels idênticos', '0'],
+      ['Detecção da placa', 'centro (700, 550), raio 494,5 px', 'centro (700,5, 550,5), raio 501 px', 'raio +1,3%'],
+      ['Leitura de TIFF (17 variações: 1, 8, 16 e 32 bits, paleta, LZW, Deflate, PackBits, blocos, várias páginas)', 'arquivo original e ImageJ 1.54u', 'valores idênticos', '0'],
       ['Intensidade: média, desvio, mín., máx., densidade integrada (2 elipses e 1 polígono)', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Área e perímetro de elipses', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Ângulo', '72,35° (ImageJ)', '72,35°', '0'],
@@ -104,6 +104,7 @@
     ],
 
     changelog: [
+      ['0.7.2', 'TIFF de 1 bit: valores de intensidade 0 e 255, como no ImageJ (antes eram 0 e 1). Testes de validação publicados junto do código-fonte (pasta testes).'],
       ['0.7.1', 'Corrigir iluminação agora usa o rolling ball do ImageJ, com resultado idêntico pixel a pixel; o número de validação anterior (17,2 → 1,8) foi medido de forma que favorecia o resultado e foi substituído. Licença MIT.'],
       ['0.7', 'Protocolos prontos (sementes, colônias, área foliar, cobertura, fluorescência CTCF, cicatrização, bandas de gel) e protocolos próprios, salvos no aparelho, com exportação e importação; ângulo; retângulo e elipse; medidas de intensidade; barra de escala; recortar, girar e endireitar; ajustes de imagem; corrigir iluminação desigual; porcentagem de cobertura; bandas de gel; perfil de linha e histograma; comparar fotos lado a lado; fotos de exemplo e tutorial de primeiro uso.'],
       ['0.6', 'Painel "Métodos e citação" (métodos, validação, créditos, como citar); versão visível no app, na planilha, no projeto e na imagem salva.'],

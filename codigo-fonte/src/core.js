@@ -807,7 +807,7 @@
       if (um && xr > 0) { const u = U[um[1].trim().replace(/\\/g, '').toLowerCase()]; if (u) cal = { ppu: xr, unit: u, source: 'ImageJ' }; }
       else if (ru === 3 && xr > 0) cal = { ppu: xr, unit: 'cm', source: 'TIFF' };
       let gray = null; // valores originais para medir intensidade (cinza de 16/32 bits, ou 8 bits)
-      if (spp === 1 && photo !== 3) { gray = new Float32Array(W * H); for (let i = 0; i < W * H; i++) gray[i] = photo === 0 && bps === 8 ? 255 - raw[i] : raw[i]; }
+      if (spp === 1 && photo !== 3) { gray = new Float32Array(W * H); for (let i = 0; i < W * H; i++) gray[i] = bps === 1 ? rgba[i * 4] : photo === 0 && bps === 8 ? 255 - raw[i] : raw[i]; } // 1 bit vira 0/255, como no ImageJ
       pages.push({ W, H, rgba, cal, bits: bps, gray });
     }
     return { pages, total };

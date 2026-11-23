@@ -1,4 +1,4 @@
-# MetricMod — versão 0.7.1
+# MetricMod — versão 0.7.2
 
 Abra **MetricMod.html** com dois cliques (Chrome ou Edge). Funciona sem internet e sem instalar nada.
 Versão instalável publicada em **https://metricmod.github.io/** (veja PUBLICAR.md).

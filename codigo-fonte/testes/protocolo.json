@@ -1,0 +1,38 @@
+{
+ "app": "MetricMod",
+ "tipo": "protocolo",
+ "versao": "0.7.1",
+ "protocolo": {
+  "id": "pmwtbjtnc",
+  "nome": "Feijão do laboratório",
+  "descricao": "",
+  "ferramenta": "detect",
+  "passos": [
+   "Foto a 30 cm",
+   "Régua ao lado"
+  ],
+  "versao": "0.7.1",
+  "criado": "2026-11-23T13:46:04.633Z",
+  "config": {
+   "sens": 50,
+   "split": true,
+   "refine": true,
+   "fill": true,
+   "excl": false,
+   "flat": false,
+   "measureInt": true,
+   "covMode": "diff",
+   "covRoi": "whole",
+   "covSens": 50,
+   "prefMode": "free",
+   "role": "",
+   "bandDark": true
+  },
+  "scale": {
+   "ppu": 60.00000088542297,
+   "unit": "cm",
+   "known": 10
+  },
+  "unit": "cm"
+ }
+}

@@ -306,7 +306,7 @@ td .del:hover { color: var(--danger); }
 </head>
 <body>
 <header id="top">
-  <div id="brand" title="MetricMod 0.7.1"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.7.1</button></div>
+  <div id="brand" title="MetricMod 0.7.2"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.7.2</button></div>
   <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
   <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
   <input type="file" id="folder" webkitdirectory multiple hidden>
@@ -1214,7 +1214,7 @@ td .del:hover { color: var(--danger); }
       if (um && xr > 0) { const u = U[um[1].trim().replace(/\\/g, '').toLowerCase()]; if (u) cal = { ppu: xr, unit: u, source: 'ImageJ' }; }
       else if (ru === 3 && xr > 0) cal = { ppu: xr, unit: 'cm', source: 'TIFF' };
       let gray = null; // valores originais para medir intensidade (cinza de 16/32 bits, ou 8 bits)
-      if (spp === 1 && photo !== 3) { gray = new Float32Array(W * H); for (let i = 0; i < W * H; i++) gray[i] = photo === 0 && bps === 8 ? 255 - raw[i] : raw[i]; }
+      if (spp === 1 && photo !== 3) { gray = new Float32Array(W * H); for (let i = 0; i < W * H; i++) gray[i] = bps === 1 ? rgba[i * 4] : photo === 0 && bps === 8 ? 255 - raw[i] : raw[i]; } // 1 bit vira 0/255, como no ImageJ
       pages.push({ W, H, rgba, cal, bits: bps, gray });
     }
     return { pages, total };
@@ -1588,8 +1588,8 @@ td .del:hover { color: var(--danger); }
       ['Foto inclinada com correção de perspectiva', '2,565 cm²', '2,598 cm²', '+1,3% (sem correção: +4,5%)'],
       ['Placa com 60 colônias, 3 pares encostados e 15 de outro tipo', '60', '60', 'também com luz irregular'],
       ['Objetos encostados (pares, trios, tamanhos diferentes)', '18 (Watershed do ImageJ)', '18', 'igual'],
-      ['Detecção da placa', 'centro (700, 550), raio 494 px', 'centro (700,5, 550,5), raio 501 px', 'raio +1,4%'],
-      ['Leitura de TIFF (17 variações)', 'arquivo original', 'pixels idênticos', '0'],
+      ['Detecção da placa', 'centro (700, 550), raio 494,5 px', 'centro (700,5, 550,5), raio 501 px', 'raio +1,3%'],
+      ['Leitura de TIFF (17 variações: 1, 8, 16 e 32 bits, paleta, LZW, Deflate, PackBits, blocos, várias páginas)', 'arquivo original e ImageJ 1.54u', 'valores idênticos', '0'],
       ['Intensidade: média, desvio, mín., máx., densidade integrada (2 elipses e 1 polígono)', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Área e perímetro de elipses', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Ângulo', '72,35° (ImageJ)', '72,35°', '0'],
@@ -1610,6 +1610,7 @@ td .del:hover { color: var(--danger); }
     ],
 
     changelog: [
+      ['0.7.2', 'TIFF de 1 bit: valores de intensidade 0 e 255, como no ImageJ (antes eram 0 e 1). Testes de validação publicados junto do código-fonte (pasta testes).'],
       ['0.7.1', 'Corrigir iluminação agora usa o rolling ball do ImageJ, com resultado idêntico pixel a pixel; o número de validação anterior (17,2 → 1,8) foi medido de forma que favorecia o resultado e foi substituído. Licença MIT.'],
       ['0.7', 'Protocolos prontos (sementes, colônias, área foliar, cobertura, fluorescência CTCF, cicatrização, bandas de gel) e protocolos próprios, salvos no aparelho, com exportação e importação; ângulo; retângulo e elipse; medidas de intensidade; barra de escala; recortar, girar e endireitar; ajustes de imagem; corrigir iluminação desigual; porcentagem de cobertura; bandas de gel; perfil de linha e histograma; comparar fotos lado a lado; fotos de exemplo e tutorial de primeiro uso.'],
       ['0.6', 'Painel "Métodos e citação" (métodos, validação, créditos, como citar); versão visível no app, na planilha, no projeto e na imagem salva.'],
@@ -1666,7 +1667,7 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const APP_VERSION = '0.7.1', AB = window.MM_ABOUT;
+  const APP_VERSION = '0.7.2', AB = window.MM_ABOUT;
   const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('canvasWrap'), guide = $('guide');
   const COLORS = ['#ff3d7f', '#00b3e6', '#ffb000', '#8f6bff', '#00c48c', '#ff6b2c', '#e040fb', '#4fc3f7'];
   const PREFIX = { area: 'A', length: 'C', lw: 'CL', count: 'N', colony: 'P', angle: 'AN', coverage: 'CB', bands: 'G', profile: 'PL' };

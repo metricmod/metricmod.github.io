@@ -1,0 +1,3 @@
+const MM=require('../src/core.js'); const {execSync}=require('child_process');
+const load=(f)=>{const raw=execSync(`python3 -c "from PIL import Image;import sys;im=Image.open('${f}').convert('RGBA');sys.stdout.write(str(im.size[0])+' '+str(im.size[1])+chr(10));sys.stdout.flush();sys.stdout.buffer.write(im.tobytes())"`,{maxBuffer:2e8});const nl=raw.indexOf(10);const [W,H]=raw.slice(0,nl).toString().split(' ').map(Number);return {W,H,rgba:new Uint8ClampedArray(raw.slice(nl+1))};};
+for (const f of process.argv.slice(2)) { const {W,H,rgba}=load(f); const t=Date.now(); const c=MM.detectPlate(rgba,W,H); console.log(f, c && {cx:+c.cx.toFixed(1),cy:+c.cy.toFixed(1),r:+c.r.toFixed(1)}, Date.now()-t,'ms'); }

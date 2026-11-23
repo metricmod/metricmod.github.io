@@ -1,0 +1,21 @@
+dir=File.getParent(getInfo("macro.filepath"))+"/";
+newImage("t","8-bit white",600,400,1);
+setColor(0);
+makeOval(40,40,120,80); fill();
+makePolygon(250,50,380,90,340,200,230,170); fill();
+makeRotatedRectangle(420,300,560,220,30); fill();
+makeOval(60,250,60,60); fill();
+makePolygon(200,250,260,240,300,300,240,330,220,290,180,320); fill();
+makeOval(500,40,70,140); fill(); setColor(255); makeOval(520,80,30,40); fill();
+run("Select None");
+saveAs("Text Image", dir+"shapes.txt");
+setAutoThreshold("Default");
+run("Set Measurements...", "area perimeter fit shape feret's centroid redirect=None decimal=4");
+run("Analyze Particles...", "display clear include");
+s="";
+for(i=0;i<nResults;i++) s=s+d2s(getResult("X",i),3)+","+d2s(getResult("Y",i),3)+","+getResult("Area",i)+","+d2s(getResult("Perim.",i),4)+","+d2s(getResult("Feret",i),4)+","+d2s(getResult("MinFeret",i),4)+","+d2s(getResult("Circ.",i),4)+"\n";
+File.saveString(s, dir+"ij_particles.csv");
+// polígono com coordenadas fracionárias
+run("Select None");
+makeSelection("polygon", newArray(10.3,90.7,70.2,5.6), newArray(10.8,20.1,95.4,60.5));
+File.saveString(""+getValue("Area")+","+getValue("Perim.")+","+getValue("Feret")+","+getValue("MinFeret"), dir+"ij_poly.csv");
