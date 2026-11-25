@@ -1473,7 +1473,12 @@
           if (r.total > r.pages.length) toast(`${f.name} tem ${r.total} páginas; abri as ${r.pages.length} primeiras.`);
           else if (r.pages.some((pg) => pg.bits > 8)) toast(`${f.name} tem ${r.pages[0].bits} bits: a imagem é mostrada com o contraste ajustado do mínimo ao máximo, como no ImageJ.`);
         } catch (e) { toast(`Não consegui abrir ${f.name}: ${e.message}.`); }
-      } else S.photos.push(newPhoto(f.name || `imagem colada ${S.photos.length + 1}`, f));
+      } else {
+        // PNG de 16 bits em cinza: lido aqui para manter os valores originais (o navegador reduziria para 8 bits)
+        let pg = null; if (/\.png$/i.test(f.name || '') || f.type === 'image/png') { try { pg = await MM.decodePNG16(await f.arrayBuffer()); } catch { pg = null; } }
+        if (pg) { S.photos.push(newPhoto(f.name, null, canvasFromRGBA(pg.W, pg.H, pg.rgba), null, pg.gray)); toast(`${f.name} tem 16 bits: a imagem é mostrada com o contraste ajustado do mínimo ao máximo, como no ImageJ.`); }
+        else S.photos.push(newPhoto(f.name || `imagem colada ${S.photos.length + 1}`, f));
+      }
     }
     busy(false);
     if (S.photos.length === start) return;
@@ -1487,11 +1492,12 @@
     Object.assign(p, { objs: S.objs, seq: S.seq, undo: S.undo, redo: S.redo, view: { ...S.view }, scale: S.scale });
   }
   // Lê a foto sem conversão de perfil de cor (valores do arquivo, como o ImageJ); a rotação EXIF do celular é aplicada.
+  // Partes transparentes (PNG) são compostas sobre fundo branco, como o ImageJ faz: valor = cor × alfa + 255 × (1 − alfa).
   async function decodeRaw(file) {
     if (!window.createImageBitmap) return null;
     try {
       const bm = await createImageBitmap(file, { colorSpaceConversion: 'none', imageOrientation: 'from-image', premultiplyAlpha: 'none' });
-      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; c.getContext('2d').drawImage(bm, 0, 0); bm.close && bm.close(); return c;
+      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bm, 0, 0); bm.close && bm.close(); return c;
     } catch { return null; }
   }
   function decode(p) {
@@ -1500,7 +1506,7 @@
       if (p.src) return res(p.src);
       const raw = await decodeRaw(p.file); if (raw) return res(raw);
       const url = URL.createObjectURL(p.file), img = new Image();
-      img.onload = () => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); URL.revokeObjectURL(url); res(c); };
+      img.onload = () => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0); URL.revokeObjectURL(url); res(c); };
       img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
       img.src = url;
     });

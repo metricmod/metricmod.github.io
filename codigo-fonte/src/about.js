@@ -70,7 +70,7 @@
         d: 'Transformada de Hough para círculos, com votos na direção do gradiente, numa cópia reduzida da foto. Entre os candidatos, escolhe-se o centro com o círculo mais nítido e, nele, o maior raio com borda forte. Só é aceito um círculo cuja borda aparece em pelo menos 60% da volta.',
         r: 'Kimme, C.; Ballard, D.; Sklansky, J. Finding circles by an array of accumulators. <i>Communications of the ACM</i>, v. 18, n. 2, p. 120–122, 1975.' },
       { t: 'Leitura de imagens',
-        d: 'JPG, PNG, WebP, BMP e GIF são lidos pelo navegador, sem conversão de perfil de cor, para que os valores sejam os do arquivo (como no ImageJ). TIFF é lido pelo próprio MetricMod (sem compressão, LZW, PackBits ou Deflate; 1, 8, 16 ou 32 bits; em faixas ou blocos; várias páginas). Imagens de 16 e 32 bits são exibidas com o contraste ajustado do mínimo ao máximo, como no ImageJ; as medidas geométricas não dependem desse ajuste.' },
+        d: 'JPG, PNG, WebP, BMP e GIF são lidos pelo navegador, sem conversão de perfil de cor, para que os valores sejam os do arquivo (como no ImageJ). Partes transparentes de PNG são compostas sobre fundo branco, como o ImageJ faz. PNG de 16 bits em cinza é lido pelo próprio MetricMod, com os valores originais. TIFF é lido pelo próprio MetricMod (sem compressão, LZW, PackBits ou Deflate; 1, 8, 16 ou 32 bits; em faixas ou blocos; várias páginas). Imagens de 16 e 32 bits são exibidas com o contraste ajustado do mínimo ao máximo, como no ImageJ; as medidas geométricas não dependem desse ajuste.' },
     ],
 
     // Testes já feitos (imagens sintéticas com valor real conhecido).
@@ -98,6 +98,7 @@
       ['Subtrair fundo (rolling ball): 10 comparações, raios 5 a 150, fundo claro e escuro, cinza e cor', 'ImageJ 1.54u', '26,4 milhões de valores idênticos', '0'],
       ['Desvio do ágar numa placa com luz irregular (10.607 pontos)', '8,06 sem correção', '2,42 com correção', '−70%'],
       ['Leitura de JPG e PNG no navegador (6 imagens, 6,16 milhões de pixels)', 'cinza do ImageJ 1.54u', 'idênticos', '0'],
+      ['PNG com transparência (cor e paleta), 16 bits em cinza e entrelaçado', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Girar 90° quatro vezes; espelhar duas vezes', 'foto original', 'pixels idênticos', '0'],
     ],
     validationNote: 'Testes feitos com imagens geradas por computador, em que o valor real é conhecido, e com o ImageJ 1.54u compilado do código-fonte oficial. A validação com amostras reais de laboratório está em andamento e será publicada aqui.',
@@ -110,6 +111,7 @@
     ],
 
     changelog: [
+      ['0.7.6', 'PNG com transparência: partes transparentes compostas sobre fundo branco, como no ImageJ. PNG de 16 bits em cinza: valores originais mantidos, como no ImageJ (antes o navegador os reduzia a 8 bits).'],
       ['0.7.5', 'Cobertura: critérios escuro e claro iguais ao limiar de Otsu do ImageJ; com uma área desenhada, o limiar é calculado só dentro dela, como no ImageJ.'],
       ['0.7.4', 'Perímetro dos objetos detectados, perímetro de seleções à mão livre e perfil de linha calculados exatamente como no ImageJ (antes: até 0,15% no perímetro de formas com cantos agudos e 0,33 nível de cinza no perfil).'],
       ['0.7.3', 'Fotos lidas sem conversão de perfil de cor, com os mesmos valores que o ImageJ lê (conferido em JPG e PNG, 6,16 milhões de pixels).'],

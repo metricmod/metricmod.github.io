@@ -306,7 +306,7 @@ td .del:hover { color: var(--danger); }
 </head>
 <body>
 <header id="top">
-  <div id="brand" title="MetricMod 0.7.5"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.7.5</button></div>
+  <div id="brand" title="MetricMod 0.7.6"><svg viewBox="0 0 24 24" fill="none" stroke="#35c2a6" stroke-width="2"><path d="M3 17 17 3l4 4L7 21H3z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>MetricMod<button id="verBadge" title="Novidades desta versão">v0.7.6</button></div>
   <button class="tbtn" id="btnOpen" title="Abrir uma ou várias imagens (Ctrl+O)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10H3z"/></svg><span class="lbl">Abrir imagens</span></button>
   <input type="file" id="file" accept="image/*,.tif,.tiff,.heic,.heif,.metricmod" multiple hidden>
   <input type="file" id="folder" webkitdirectory multiple hidden>
@@ -1130,6 +1130,47 @@ td .del:hover { color: var(--danger); }
   // Baseline + LZW, PackBits, Deflate; 1/8/16/32 bits (inteiro ou float); cinza, RGB(A), paleta; faixas ou blocos;
   // várias páginas. Lê a escala gravada pelo ImageJ (unit=… + XResolution) ou em centímetros.
   // Retorna Promise<{pages:[{W,H,rgba,cal,bits}], total}>. maxPages limita quantas páginas decodificar.
+  // PNG de 16 bits em tons de cinza: o navegador reduz para 8 bits; aqui os valores originais são mantidos, como no ImageJ.
+  // Devolve null para os demais tipos de PNG (que o navegador lê com os mesmos valores do ImageJ).
+  MM.decodePNG16 = async (buf) => {
+    const u = new Uint8Array(buf), dv = new DataView(buf);
+    const sig = [137, 80, 78, 71, 13, 10, 26, 10]; if (u.length < 33 || sig.some((v, i) => u[i] !== v)) return null;
+    let o = 8, W = 0, H = 0, depth = 0, ct = 0, inter = 0; const idat = [];
+    while (o + 8 <= u.length) {
+      const len = dv.getUint32(o), type = String.fromCharCode(u[o + 4], u[o + 5], u[o + 6], u[o + 7]), d = o + 8;
+      if (type === 'IHDR') { W = dv.getUint32(d); H = dv.getUint32(d + 4); depth = u[d + 8]; ct = u[d + 9]; inter = u[d + 12]; if (depth !== 16 || ct !== 0) return null; }
+      else if (type === 'IDAT') idat.push(u.subarray(d, d + len));
+      else if (type === 'IEND') break;
+      o = d + len + 4;
+    }
+    if (!W || !idat.length) return null;
+    const ds = new DecompressionStream('deflate'), wr = ds.writable.getWriter(); idat.forEach((c) => wr.write(c)); wr.close();
+    const raw = new Uint8Array(await new Response(ds.readable).arrayBuffer());
+    const gray = new Float32Array(W * H), bpp = 2;
+    const passes = inter ? [[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4], [1, 0, 2, 2], [0, 1, 1, 2]] : [[0, 0, 1, 1]];
+    let p = 0;
+    for (const [x0, y0, dx, dy] of passes) {
+      const pw = Math.ceil((W - x0) / dx), ph = Math.ceil((H - y0) / dy); if (pw <= 0 || ph <= 0) continue;
+      const rb = pw * bpp; let prev = new Uint8Array(rb);
+      for (let r = 0; r < ph; r++) {
+        const f = raw[p++], line = raw.slice(p, p + rb); p += rb;
+        for (let i = 0; i < rb; i++) {
+          const a = i >= bpp ? line[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+          let v = line[i];
+          if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
+          else if (f === 4) { const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+          line[i] = v & 255;
+        }
+        const y = y0 + r * dy; for (let k = 0; k < pw; k++) gray[y * W + x0 + k * dx] = (line[2 * k] << 8) | line[2 * k + 1];
+        prev = line;
+      }
+    }
+    let mn = Infinity, mx = -Infinity; for (const v of gray) { if (v < mn) mn = v; if (v > mx) mx = v; }
+    const rgba = new Uint8ClampedArray(W * H * 4);
+    for (let i = 0; i < W * H; i++) { const g = mx > mn ? (gray[i] - mn) * 255 / (mx - mn) : 0; rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = g; rgba[i * 4 + 3] = 255; }
+    return { W, H, rgba, cal: null, bits: 16, gray };
+  };
+
   MM.decodeTIFF = async (buf, maxPages = 20) => {
     const dv = new DataView(buf), le = dv.getUint16(0) === 0x4949;
     if (!le && dv.getUint16(0) !== 0x4d4d) throw new Error('não é TIFF');
@@ -1607,7 +1648,7 @@ td .del:hover { color: var(--danger); }
         d: 'Transformada de Hough para círculos, com votos na direção do gradiente, numa cópia reduzida da foto. Entre os candidatos, escolhe-se o centro com o círculo mais nítido e, nele, o maior raio com borda forte. Só é aceito um círculo cuja borda aparece em pelo menos 60% da volta.',
         r: 'Kimme, C.; Ballard, D.; Sklansky, J. Finding circles by an array of accumulators. <i>Communications of the ACM</i>, v. 18, n. 2, p. 120–122, 1975.' },
       { t: 'Leitura de imagens',
-        d: 'JPG, PNG, WebP, BMP e GIF são lidos pelo navegador, sem conversão de perfil de cor, para que os valores sejam os do arquivo (como no ImageJ). TIFF é lido pelo próprio MetricMod (sem compressão, LZW, PackBits ou Deflate; 1, 8, 16 ou 32 bits; em faixas ou blocos; várias páginas). Imagens de 16 e 32 bits são exibidas com o contraste ajustado do mínimo ao máximo, como no ImageJ; as medidas geométricas não dependem desse ajuste.' },
+        d: 'JPG, PNG, WebP, BMP e GIF são lidos pelo navegador, sem conversão de perfil de cor, para que os valores sejam os do arquivo (como no ImageJ). Partes transparentes de PNG são compostas sobre fundo branco, como o ImageJ faz. PNG de 16 bits em cinza é lido pelo próprio MetricMod, com os valores originais. TIFF é lido pelo próprio MetricMod (sem compressão, LZW, PackBits ou Deflate; 1, 8, 16 ou 32 bits; em faixas ou blocos; várias páginas). Imagens de 16 e 32 bits são exibidas com o contraste ajustado do mínimo ao máximo, como no ImageJ; as medidas geométricas não dependem desse ajuste.' },
     ],
 
     // Testes já feitos (imagens sintéticas com valor real conhecido).
@@ -1635,6 +1676,7 @@ td .del:hover { color: var(--danger); }
       ['Subtrair fundo (rolling ball): 10 comparações, raios 5 a 150, fundo claro e escuro, cinza e cor', 'ImageJ 1.54u', '26,4 milhões de valores idênticos', '0'],
       ['Desvio do ágar numa placa com luz irregular (10.607 pontos)', '8,06 sem correção', '2,42 com correção', '−70%'],
       ['Leitura de JPG e PNG no navegador (6 imagens, 6,16 milhões de pixels)', 'cinza do ImageJ 1.54u', 'idênticos', '0'],
+      ['PNG com transparência (cor e paleta), 16 bits em cinza e entrelaçado', 'ImageJ 1.54u', 'idênticos', '0'],
       ['Girar 90° quatro vezes; espelhar duas vezes', 'foto original', 'pixels idênticos', '0'],
     ],
     validationNote: 'Testes feitos com imagens geradas por computador, em que o valor real é conhecido, e com o ImageJ 1.54u compilado do código-fonte oficial. A validação com amostras reais de laboratório está em andamento e será publicada aqui.',
@@ -1647,6 +1689,7 @@ td .del:hover { color: var(--danger); }
     ],
 
     changelog: [
+      ['0.7.6', 'PNG com transparência: partes transparentes compostas sobre fundo branco, como no ImageJ. PNG de 16 bits em cinza: valores originais mantidos, como no ImageJ (antes o navegador os reduzia a 8 bits).'],
       ['0.7.5', 'Cobertura: critérios escuro e claro iguais ao limiar de Otsu do ImageJ; com uma área desenhada, o limiar é calculado só dentro dela, como no ImageJ.'],
       ['0.7.4', 'Perímetro dos objetos detectados, perímetro de seleções à mão livre e perfil de linha calculados exatamente como no ImageJ (antes: até 0,15% no perímetro de formas com cantos agudos e 0,33 nível de cinza no perfil).'],
       ['0.7.3', 'Fotos lidas sem conversão de perfil de cor, com os mesmos valores que o ImageJ lê (conferido em JPG e PNG, 6,16 milhões de pixels).'],
@@ -1707,7 +1750,7 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
-  const APP_VERSION = '0.7.5', AB = window.MM_ABOUT;
+  const APP_VERSION = '0.7.6', AB = window.MM_ABOUT;
   const cv = $('cv'), ctx = cv.getContext('2d'), wrap = $('canvasWrap'), guide = $('guide');
   const COLORS = ['#ff3d7f', '#00b3e6', '#ffb000', '#8f6bff', '#00c48c', '#ff6b2c', '#e040fb', '#4fc3f7'];
   const PREFIX = { area: 'A', length: 'C', lw: 'CL', count: 'N', colony: 'P', angle: 'AN', coverage: 'CB', bands: 'G', profile: 'PL' };
@@ -3178,7 +3221,12 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
           if (r.total > r.pages.length) toast(`${f.name} tem ${r.total} páginas; abri as ${r.pages.length} primeiras.`);
           else if (r.pages.some((pg) => pg.bits > 8)) toast(`${f.name} tem ${r.pages[0].bits} bits: a imagem é mostrada com o contraste ajustado do mínimo ao máximo, como no ImageJ.`);
         } catch (e) { toast(`Não consegui abrir ${f.name}: ${e.message}.`); }
-      } else S.photos.push(newPhoto(f.name || `imagem colada ${S.photos.length + 1}`, f));
+      } else {
+        // PNG de 16 bits em cinza: lido aqui para manter os valores originais (o navegador reduziria para 8 bits)
+        let pg = null; if (/\.png$/i.test(f.name || '') || f.type === 'image/png') { try { pg = await MM.decodePNG16(await f.arrayBuffer()); } catch { pg = null; } }
+        if (pg) { S.photos.push(newPhoto(f.name, null, canvasFromRGBA(pg.W, pg.H, pg.rgba), null, pg.gray)); toast(`${f.name} tem 16 bits: a imagem é mostrada com o contraste ajustado do mínimo ao máximo, como no ImageJ.`); }
+        else S.photos.push(newPhoto(f.name || `imagem colada ${S.photos.length + 1}`, f));
+      }
     }
     busy(false);
     if (S.photos.length === start) return;
@@ -3192,11 +3240,12 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
     Object.assign(p, { objs: S.objs, seq: S.seq, undo: S.undo, redo: S.redo, view: { ...S.view }, scale: S.scale });
   }
   // Lê a foto sem conversão de perfil de cor (valores do arquivo, como o ImageJ); a rotação EXIF do celular é aplicada.
+  // Partes transparentes (PNG) são compostas sobre fundo branco, como o ImageJ faz: valor = cor × alfa + 255 × (1 − alfa).
   async function decodeRaw(file) {
     if (!window.createImageBitmap) return null;
     try {
       const bm = await createImageBitmap(file, { colorSpaceConversion: 'none', imageOrientation: 'from-image', premultiplyAlpha: 'none' });
-      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; c.getContext('2d').drawImage(bm, 0, 0); bm.close && bm.close(); return c;
+      const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(bm, 0, 0); bm.close && bm.close(); return c;
     } catch { return null; }
   }
   function decode(p) {
@@ -3205,7 +3254,7 @@ window.MM_EXAMPLES = [{"name": "exemplo-1-sementes-e-folha.jpg", "data": "data:i
       if (p.src) return res(p.src);
       const raw = await decodeRaw(p.file); if (raw) return res(raw);
       const url = URL.createObjectURL(p.file), img = new Image();
-      img.onload = () => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); URL.revokeObjectURL(url); res(c); };
+      img.onload = () => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0); URL.revokeObjectURL(url); res(c); };
       img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
       img.src = url;
     });

@@ -723,6 +723,47 @@
   // Baseline + LZW, PackBits, Deflate; 1/8/16/32 bits (inteiro ou float); cinza, RGB(A), paleta; faixas ou blocos;
   // várias páginas. Lê a escala gravada pelo ImageJ (unit=… + XResolution) ou em centímetros.
   // Retorna Promise<{pages:[{W,H,rgba,cal,bits}], total}>. maxPages limita quantas páginas decodificar.
+  // PNG de 16 bits em tons de cinza: o navegador reduz para 8 bits; aqui os valores originais são mantidos, como no ImageJ.
+  // Devolve null para os demais tipos de PNG (que o navegador lê com os mesmos valores do ImageJ).
+  MM.decodePNG16 = async (buf) => {
+    const u = new Uint8Array(buf), dv = new DataView(buf);
+    const sig = [137, 80, 78, 71, 13, 10, 26, 10]; if (u.length < 33 || sig.some((v, i) => u[i] !== v)) return null;
+    let o = 8, W = 0, H = 0, depth = 0, ct = 0, inter = 0; const idat = [];
+    while (o + 8 <= u.length) {
+      const len = dv.getUint32(o), type = String.fromCharCode(u[o + 4], u[o + 5], u[o + 6], u[o + 7]), d = o + 8;
+      if (type === 'IHDR') { W = dv.getUint32(d); H = dv.getUint32(d + 4); depth = u[d + 8]; ct = u[d + 9]; inter = u[d + 12]; if (depth !== 16 || ct !== 0) return null; }
+      else if (type === 'IDAT') idat.push(u.subarray(d, d + len));
+      else if (type === 'IEND') break;
+      o = d + len + 4;
+    }
+    if (!W || !idat.length) return null;
+    const ds = new DecompressionStream('deflate'), wr = ds.writable.getWriter(); idat.forEach((c) => wr.write(c)); wr.close();
+    const raw = new Uint8Array(await new Response(ds.readable).arrayBuffer());
+    const gray = new Float32Array(W * H), bpp = 2;
+    const passes = inter ? [[0, 0, 8, 8], [4, 0, 8, 8], [0, 4, 4, 8], [2, 0, 4, 4], [0, 2, 2, 4], [1, 0, 2, 2], [0, 1, 1, 2]] : [[0, 0, 1, 1]];
+    let p = 0;
+    for (const [x0, y0, dx, dy] of passes) {
+      const pw = Math.ceil((W - x0) / dx), ph = Math.ceil((H - y0) / dy); if (pw <= 0 || ph <= 0) continue;
+      const rb = pw * bpp; let prev = new Uint8Array(rb);
+      for (let r = 0; r < ph; r++) {
+        const f = raw[p++], line = raw.slice(p, p + rb); p += rb;
+        for (let i = 0; i < rb; i++) {
+          const a = i >= bpp ? line[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+          let v = line[i];
+          if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
+          else if (f === 4) { const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c); v += pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
+          line[i] = v & 255;
+        }
+        const y = y0 + r * dy; for (let k = 0; k < pw; k++) gray[y * W + x0 + k * dx] = (line[2 * k] << 8) | line[2 * k + 1];
+        prev = line;
+      }
+    }
+    let mn = Infinity, mx = -Infinity; for (const v of gray) { if (v < mn) mn = v; if (v > mx) mx = v; }
+    const rgba = new Uint8ClampedArray(W * H * 4);
+    for (let i = 0; i < W * H; i++) { const g = mx > mn ? (gray[i] - mn) * 255 / (mx - mn) : 0; rgba[i * 4] = rgba[i * 4 + 1] = rgba[i * 4 + 2] = g; rgba[i * 4 + 3] = 255; }
+    return { W, H, rgba, cal: null, bits: 16, gray };
+  };
+
   MM.decodeTIFF = async (buf, maxPages = 20) => {
     const dv = new DataView(buf), le = dv.getUint16(0) === 0x4949;
     if (!le && dv.getUint16(0) !== 0x4d4d) throw new Error('não é TIFF');

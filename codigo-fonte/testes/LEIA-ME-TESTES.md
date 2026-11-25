@@ -16,6 +16,7 @@ executado sem interface por `RunMacro` (`ij.IJ.runMacroFile`). Qualquer ImageJ 1
 | `ij-perfil.ijm` | `ij_perfil.csv` (perfil de 3 linhas e histogramas) | `test-perfil.js` |
 | `ij-maolivre.ijm` | `ij_maolivre.csv` (seleção e linha à mão livre; pontos em `maolivre.json`, `linhalivre.json`) | `test-maolivre.js` |
 | `ij-cobertura.ijm` | `ij_cobertura.csv`, `ij_cobertura_roi.csv` (Otsu escuro/claro, foto inteira e elipse) | `test-cobertura.js` |
+| `ij-png.ijm` | `png/ij-*` (PNG com transparência, paleta, 16 bits, entrelaçado lidos pelo ImageJ) | `test-png16.mjs`, `e2e-png.py` |
 | `ij-tiff.ijm` | `rel/tif-*` (TIFF de 1, 16 e 32 bits e paleta lidos pelo ImageJ) | `test-tiff-ij.mjs` |
 | `rel/col.ijm` | `rel/col_ij.csv` (contagem com Analyze Particles) | relatório, Tabela 8 |
 
